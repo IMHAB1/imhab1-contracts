@@ -24,10 +24,34 @@ require("ts-node").register({
 
 require("dotenv").config();
 
-const mnemonic = process.env["MNEMONIC"] ?? "test test test test test test test test test test test test";
-// const infuraProjectId = process.env["INFURA_PROJECT_ID"];
+const invariant = require("invariant");
 
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+
+const mnemonic =
+  process.env["MNEMONIC"] ??
+  "test test test test test test test test test test test test";
+
+const infuraProjectId = process.env["INFURA_PROJECT_ID"];
+const forkNetwork = process.env["FORK_NETWORK"] ?? "polygon";
+
+invariant(
+  forkNetwork === "polygon" ||
+    forkNetwork === "optimism" ||
+    forkNetwork === "polygon_mumbai" ||
+    forkNetwork === "optimism_goerli",
+  "FORK_NETWORK must be either polygon or ARBITRUM"
+);
+
+console.log("Forking %s testnet", forkNetwork);
+
+const CHAIN_IDS = {
+  polygon: 80001, // Polygon Testnet Mumbai
+  ARBITRUM: 421613, // Arbitrum Görli Rollup Testnet
+};
+
+const CHAIN_ID =
+  forkNetwork === "polygon" ? CHAIN_IDS.polygon : CHAIN_IDS.ARBITRUM;
 
 module.exports = {
   /**
@@ -50,14 +74,35 @@ module.exports = {
     development: {
       host: "127.0.0.1", // Localhost (default: none)
       port: 8545, // Standard Ethereum port (default: none)
-      network_id: "*", // Any network (default: none)
+      network_id: CHAIN_ID,
+      chain_id: CHAIN_ID,
     },
-    //
-    // goerli: {
-    //   provider: () => new HDWalletProvider(mnemonic, `https://goerli.infura.io/v3/${infuraProjectId}`),
-    //   network_id: 5,       // Goerli's id
-    //   chain_id: 5
-    // }
+
+    localhost: {
+      provider: () => new HDWalletProvider(mnemonic, `http://127.0.0.1:8545`),
+      network_id: "*",
+      chain_id: "*",
+    },
+
+    polygon_mumbai: {
+      provider: () =>
+        new HDWalletProvider(
+          mnemonic,
+          `https://polygon-mumbai.infura.io/v3/${infuraProjectId}`
+        ),
+      network_id: CHAIN_IDS.polygon,
+      chain_id: CHAIN_IDS.polygon,
+    },
+
+    optimism_goerli: {
+      provider: () =>
+        new HDWalletProvider(
+          mnemonic,
+          `https://optimism-goerli.infura.io/v3/${infuraProjectId}`
+        ),
+      network_id: CHAIN_IDS.ARBITRUM,
+      chain_id: CHAIN_IDS.ARBITRUM,
+    },
   },
 
   // Set default mocha options here, use special reporters etc.
@@ -68,7 +113,13 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
-      version: "0.8.13", // Fetch exact version from solc-bin
+      version: "0.8.16", // Fetch exact version from solc-bin
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200,
+        },
+      },
     },
   },
 };

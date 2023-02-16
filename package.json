@@ -4,9 +4,22 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "truffle develop",
+    "clean": "rm -rf build types",
+    "testrpc:polygon": "bash scripts/run-ganache.sh https://polygon-mainnet.infura.io/v3",
+    "testrpc:optimism": "bash scripts/run-ganache.sh https://optimism-mainnet.infura.io/v3",
+    "testrpc:polygon_mumbai": "bash scripts/run-ganache.sh https://polygon-mumbai.infura.io/v3",
+    "testrpc:optimism_goerli": "bash scripts/run-ganache.sh https://optimism-goerli.infura.io/v3",
+    "migrate:polygon": "FORK_NETWORK=polygon truffle migrate --network localhost",
+    "migrate:optimism": "FORK_NETWORK=optimism truffle migrate --network localhost",
+    "migrate:polygon_mumbai": "FORK_NETWORK=polygon_mumbai truffle migrate --network localhost",
+    "migrate:optimism_goerli": "FORK_NETWORK=optimism_goerli truffle migrate --network localhost",
+    "test:polygon": "FORK_NETWORK=polygon truffle test --network localhost",
+    "test:optimism": "FORK_NETWORK=optimism truffle test --network localhost",
+    "test:polygon_mumbai": "FORK_NETWORK=polygon_mumbai truffle test --network localhost",
+    "test:optimism_goerli": "FORK_NETWORK=optimism_goerli truffle test --network localhost",
     "generate-types": "typechain --target=truffle-v5 './build/contracts/*.json'",
-    "build": "truffle build && yarn generate-types",
-    "test": "truffle test"
+    "build": "truffle build && yarn generate-types"
   },
   "repository": {
     "type": "git",
@@ -20,15 +33,25 @@
   },
   "homepage": "https://github.com/IMHAB1/imhab1-contracts#readme",
   "dependencies": {
-    "@openzeppelin/contracts": "^4.8.1"
+    "@openzeppelin/contracts": "^4.8.1",
+    "@superfluid-finance/ethereum-contracts": "^1.5.0",
+    "ansi-colors": "^4.1.3",
+    "chai": "^4.3.7",
+    "ethers": "5.7.2",
+    "invariant": "^2.2.4"
   },
   "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.16",
     "@truffle/hdwallet-provider": "^2.1.6",
     "@typechain/truffle-v5": "^8.0.2",
     "@types/chai": "^4.3.4",
+    "@types/invariant": "^2.2.35",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.13.0",
     "dotenv": "^16.0.3",
+    "ganache": "^7.7.5",
+    "prettier": "^2.8.4",
+    "prettier-plugin-solidity": "^1.1.2",
     "truffle": "^5.7.6",
     "ts-node": "^10.9.1",
     "typechain": "^8.1.1",

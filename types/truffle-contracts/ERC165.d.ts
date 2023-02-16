@@ -5,26 +5,29 @@
 import BN from "bn.js";
 import { EventData, PastEventOptions } from "web3-eth-contract";
 
-export interface ConvertLibContract
-  extends Truffle.Contract<ConvertLibInstance> {
-  "new"(meta?: Truffle.TransactionDetails): Promise<ConvertLibInstance>;
+export interface ERC165Contract extends Truffle.Contract<ERC165Instance> {
+  "new"(meta?: Truffle.TransactionDetails): Promise<ERC165Instance>;
 }
 
 type AllEvents = never;
 
-export interface ConvertLibInstance extends Truffle.ContractInstance {
-  convert(
-    amount: number | BN | string,
-    conversionRate: number | BN | string,
+export interface ERC165Instance extends Truffle.ContractInstance {
+  /**
+   * See {IERC165-supportsInterface}.
+   */
+  supportsInterface(
+    interfaceId: string,
     txDetails?: Truffle.TransactionDetails
-  ): Promise<BN>;
+  ): Promise<boolean>;
 
   methods: {
-    convert(
-      amount: number | BN | string,
-      conversionRate: number | BN | string,
+    /**
+     * See {IERC165-supportsInterface}.
+     */
+    supportsInterface(
+      interfaceId: string,
       txDetails?: Truffle.TransactionDetails
-    ): Promise<BN>;
+    ): Promise<boolean>;
   };
 
   getPastEvents(event: string): Promise<EventData[]>;

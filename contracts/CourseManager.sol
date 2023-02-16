@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import "truffle/console.sol";
+
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ISuperfluid, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
@@ -8,7 +10,7 @@ import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contra
 
 import {PaymentReceiver} from "./PaymentReceiver.sol";
 
-// TODO: add super token
+// superfluid flow는 3개월동안
 
 contract CourseManager is Ownable {
     using SuperTokenV1Library for ISuperToken;
@@ -27,15 +29,15 @@ contract CourseManager is Ownable {
     }
 
     struct Course {
-        address professor;
+        address lecturer;
         uint256 enrollmentFee;
-        uint256 startTime; // when the course starts
-        uint256 endTime; // when the course ends
         Week[] week; // NOTE: cannot use `weeks` because it is a reserved word in solidity....
         Enrollment[] enrollments;
         mapping(address => bool) isStudent;
         mapping(address => uint256) enrollmentIndice;
     }
+
+    uint256 public constant PAYMENT_DURATION = 90 days;
 
     ISuperToken public token;
 
@@ -63,10 +65,10 @@ contract CourseManager is Ownable {
         _;
     }
 
-    // Should check non-zero professor with `nonZeroAccount`
+    // Should check non-zero lecturer with `nonZeroAccount`
     // Should check valid course with `onlyValidCourse`
-    modifier onlyProfessor(uint256 courseId, address professor) {
-        require(_courses[courseId].professor == professor, "NOT_PROFESSOR");
+    modifier onlyLecturer(uint256 courseId, address lecturer) {
+        require(_courses[courseId].lecturer == lecturer, "NOT_LECTURER");
         _;
     }
 
@@ -74,6 +76,14 @@ contract CourseManager is Ownable {
     // Should check valid course with `onlyValidCourse`
     modifier onlyValidStudent(uint256 courseId, address student) {
         require(_courses[courseId].isStudent[student], "NOT_STUDENT");
+        _;
+    }
+
+    // Should check non-zero student with `nonZeroAccount`
+    // Should check valid course with `onlyValidCourse`
+    // Should check valid student with `onlyValidStudent`
+    modifier onlyActiveStudent(uint256 courseId, address student) {
+        require(isActive(courseId, student), "NOT_ACTIVE");
         _;
     }
 
@@ -112,35 +122,23 @@ contract CourseManager is Ownable {
     // Register
     ///////////////////////////////////////////////////////////////
 
-    /// @dev Add a course by professor.
+    /// @dev Add a course by lecturer.
     /// @param enrollmentFee Enfronment fee that student pays. If 0, it's free.
-    /// @param startTime Unix timestamp in SECOND when the course starts.
-    /// @param endTime Unix timestamp in SECOND when the course ends.
     /// @param week A list of weeks. It can be empty now and updated later.
-    function addCourse(
-        uint256 enrollmentFee,
-        uint256 startTime,
-        uint256 endTime,
-        Week[] calldata week
-    ) external {
-        require(startTime > 0, "startTime > 0");
-        require(endTime > 0, "endTime > 0");
-        require(startTime < endTime, "startTime < endTime");
-
+    function addCourse(uint256 enrollmentFee, Week[] calldata week) external {
         uint256 courseId = nCourses;
         nCourses = courseId + 1;
 
         Course storage course = _courses[courseId];
-        course.professor = msg.sender;
+        course.lecturer = msg.sender;
         course.enrollmentFee = enrollmentFee;
-        course.startTime = startTime;
-        course.endTime = endTime;
+
         for (uint256 i = 0; i < week.length; i++) {
             course.week.push(week[i]);
         }
     }
 
-    // TODO: create CFA flow from student to professor
+    // TODO: create CFA flow from student to lecturer
     /// @dev Enroll a course by student
     function enrollCourse(uint256 courseId) external onlyValidCourse(courseId) {
         Course storage course = _courses[courseId];
@@ -153,22 +151,19 @@ contract CourseManager is Ownable {
         PaymentReceiver paymentReceiver;
         uint256 flowRate;
         if (course.enrollmentFee > 0) {
-            flowRate =
-                (course.enrollmentFee) /
-                (course.endTime - block.timestamp);
+            flowRate = (course.enrollmentFee) / PAYMENT_DURATION;
 
             paymentReceiver = new PaymentReceiver(
                 token,
                 msg.sender,
-                course.enrollmentFee,
-                course.startTime,
-                course.endTime
+                course.enrollmentFee
             );
-            token.createFlowFrom(
-                msg.sender,
-                address(paymentReceiver),
-                int96(uint96(flowRate))
-            );
+
+            // token.createFlowFrom(
+            //     msg.sender,
+            //     address(paymentReceiver),
+            //     int96(uint96(flowRate))
+            // );
         }
 
         course.enrollments.push(
@@ -196,6 +191,7 @@ contract CourseManager is Ownable {
         onlyValidCourse(courseId)
         onlyValidWeek(courseId, weekIndex)
         onlyValidStudent(courseId, msg.sender)
+        onlyActiveStudent(courseId, msg.sender)
     {
         Course storage course = _courses[courseId];
 
@@ -226,9 +222,6 @@ contract CourseManager is Ownable {
         address student
     ) public view returns (bool) {
         Course storage course = _courses[courseId];
-
-        if (block.timestamp < course.startTime) return false;
-        if (block.timestamp > course.endTime) return false;
 
         if (!course.isStudent[student]) return false;
         if (course.enrollmentFee > 0)
@@ -281,25 +274,13 @@ contract CourseManager is Ownable {
     function getProfessor(
         uint256 courseId
     ) external view onlyValidCourse(courseId) returns (address) {
-        return _courses[courseId].professor;
+        return _courses[courseId].lecturer;
     }
 
     function getEnrollFee(
         uint256 courseId
     ) external view onlyValidCourse(courseId) returns (uint256) {
         return _courses[courseId].enrollmentFee;
-    }
-
-    function getStartTime(
-        uint256 courseId
-    ) external view onlyValidCourse(courseId) returns (uint256) {
-        return _courses[courseId].startTime;
-    }
-
-    function getEndTime(
-        uint256 courseId
-    ) external view onlyValidCourse(courseId) returns (uint256) {
-        return _courses[courseId].endTime;
     }
 
     function getEnrollments(

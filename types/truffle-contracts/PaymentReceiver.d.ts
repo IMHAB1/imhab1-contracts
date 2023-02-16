@@ -11,8 +11,6 @@ export interface PaymentReceiverContract
     _token: string,
     _student: string,
     _enrolmentFee: number | BN | string,
-    _startTime: number | BN | string,
-    _endTime: number | BN | string,
     meta?: Truffle.TransactionDetails
   ): Promise<PaymentReceiverInstance>;
 }
@@ -30,8 +28,6 @@ export interface OwnershipTransferred {
 type AllEvents = OwnershipTransferred;
 
 export interface PaymentReceiverInstance extends Truffle.ContractInstance {
-  endTime(txDetails?: Truffle.TransactionDetails): Promise<BN>;
-
   enrolmentFee(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
   /**
@@ -50,8 +46,6 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
     sendTransaction(txDetails?: Truffle.TransactionDetails): Promise<string>;
     estimateGas(txDetails?: Truffle.TransactionDetails): Promise<number>;
   };
-
-  startTime(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
   student(txDetails?: Truffle.TransactionDetails): Promise<string>;
 
@@ -101,8 +95,6 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
   isActive(txDetails?: Truffle.TransactionDetails): Promise<boolean>;
 
   methods: {
-    endTime(txDetails?: Truffle.TransactionDetails): Promise<BN>;
-
     enrolmentFee(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
     /**
@@ -121,8 +113,6 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
       sendTransaction(txDetails?: Truffle.TransactionDetails): Promise<string>;
       estimateGas(txDetails?: Truffle.TransactionDetails): Promise<number>;
     };
-
-    startTime(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
     student(txDetails?: Truffle.TransactionDetails): Promise<string>;
 

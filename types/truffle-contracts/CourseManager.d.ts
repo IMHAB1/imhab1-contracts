@@ -26,6 +26,8 @@ export interface OwnershipTransferred {
 type AllEvents = OwnershipTransferred;
 
 export interface CourseManagerInstance extends Truffle.ContractInstance {
+  PAYMENT_DURATION(txDetails?: Truffle.TransactionDetails): Promise<BN>;
+
   nCourses(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
   /**
@@ -71,8 +73,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
   addCourse: {
     (
       enrollmentFee: number | BN | string,
-      startTime: number | BN | string,
-      endTime: number | BN | string,
       week: {
         nAnswers: number | BN | string;
         answerBigEndian: number | BN | string;
@@ -81,8 +81,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     ): Promise<Truffle.TransactionResponse<AllEvents>>;
     call(
       enrollmentFee: number | BN | string,
-      startTime: number | BN | string,
-      endTime: number | BN | string,
       week: {
         nAnswers: number | BN | string;
         answerBigEndian: number | BN | string;
@@ -91,8 +89,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     ): Promise<void>;
     sendTransaction(
       enrollmentFee: number | BN | string,
-      startTime: number | BN | string,
-      endTime: number | BN | string,
       week: {
         nAnswers: number | BN | string;
         answerBigEndian: number | BN | string;
@@ -101,8 +97,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     ): Promise<string>;
     estimateGas(
       enrollmentFee: number | BN | string,
-      startTime: number | BN | string,
-      endTime: number | BN | string,
       week: {
         nAnswers: number | BN | string;
         answerBigEndian: number | BN | string;
@@ -190,16 +184,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     txDetails?: Truffle.TransactionDetails
   ): Promise<BN>;
 
-  getStartTime(
-    courseId: number | BN | string,
-    txDetails?: Truffle.TransactionDetails
-  ): Promise<BN>;
-
-  getEndTime(
-    courseId: number | BN | string,
-    txDetails?: Truffle.TransactionDetails
-  ): Promise<BN>;
-
   getEnrollments(
     courseId: number | BN | string,
     txDetails?: Truffle.TransactionDetails
@@ -232,6 +216,8 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
   ): Promise<boolean>;
 
   methods: {
+    PAYMENT_DURATION(txDetails?: Truffle.TransactionDetails): Promise<BN>;
+
     nCourses(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
     /**
@@ -277,8 +263,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     addCourse: {
       (
         enrollmentFee: number | BN | string,
-        startTime: number | BN | string,
-        endTime: number | BN | string,
         week: {
           nAnswers: number | BN | string;
           answerBigEndian: number | BN | string;
@@ -287,8 +271,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       ): Promise<Truffle.TransactionResponse<AllEvents>>;
       call(
         enrollmentFee: number | BN | string,
-        startTime: number | BN | string,
-        endTime: number | BN | string,
         week: {
           nAnswers: number | BN | string;
           answerBigEndian: number | BN | string;
@@ -297,8 +279,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       ): Promise<void>;
       sendTransaction(
         enrollmentFee: number | BN | string,
-        startTime: number | BN | string,
-        endTime: number | BN | string,
         week: {
           nAnswers: number | BN | string;
           answerBigEndian: number | BN | string;
@@ -307,8 +287,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       ): Promise<string>;
       estimateGas(
         enrollmentFee: number | BN | string,
-        startTime: number | BN | string,
-        endTime: number | BN | string,
         week: {
           nAnswers: number | BN | string;
           answerBigEndian: number | BN | string;
@@ -392,16 +370,6 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     ): Promise<string>;
 
     getEnrollFee(
-      courseId: number | BN | string,
-      txDetails?: Truffle.TransactionDetails
-    ): Promise<BN>;
-
-    getStartTime(
-      courseId: number | BN | string,
-      txDetails?: Truffle.TransactionDetails
-    ): Promise<BN>;
-
-    getEndTime(
       courseId: number | BN | string,
       txDetails?: Truffle.TransactionDetails
     ): Promise<BN>;

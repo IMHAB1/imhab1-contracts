@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import "truffle/console.sol";
+
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
@@ -14,24 +16,14 @@ contract PaymentReceiver is Ownable {
 
     address public student;
     uint256 public enrolmentFee;
-    uint256 public startTime;
-    uint256 public endTime;
 
     bool internal _finished;
     bool internal _flowCreated;
 
-    constructor(
-        ISuperToken _token,
-        address _student,
-        uint256 _enrolmentFee,
-        uint256 _startTime,
-        uint256 _endTime
-    ) {
+    constructor(ISuperToken _token, address _student, uint256 _enrolmentFee) {
         token = _token;
         student = _student;
         enrolmentFee = _enrolmentFee;
-        startTime = _startTime;
-        endTime = _endTime;
     }
 
     modifier onlyOwnerOrStudent() {

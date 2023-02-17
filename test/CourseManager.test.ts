@@ -13,6 +13,7 @@ import { Snapshot } from "./utils/snapshot";
 import * as times from "./utils/times";
 import { CHAIN_ID } from "../lib/config";
 import { formatUnits, parseUnits } from "ethers/lib/utils";
+import { LECTURE_DATA } from "../resources";
 
 const { expectRevert } = require("@openzeppelin/test-helpers");
 
@@ -24,6 +25,8 @@ const { toBN, toWei } = web3.utils;
 
 const ENROLLMENT_FEE = toBN(parseUnits("90", 18).toString()); // 1 IBTx/day
 const TINY_ERROR = toBN(parseUnits("0.001", 18).toString());
+
+const COURSE_ID = LECTURE_DATA.length;
 
 contract("CourseManager", (accounts: Truffle.Accounts) => {
   const [deployer, lecturer, student0, student1] = accounts;
@@ -40,6 +43,10 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
   beforeEach("load contracts", async function () {
     const factory = await Factory.deployed();
+
+    // // re-deploy contracts for test env
+    // await factory.deployContracts();
+
     courseManager = await CourseManager.at(await factory.courseManager());
     ibt = await IBT.at(await factory.ibt());
     ibtx = await ISuperToken.at(await factory.ibtx());
@@ -133,7 +140,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
         it("students cannot submit answer before enroll", async function () {
           await expectRevert(
             courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               0,
               courseData.week[0].answerBigEndian,
               { from: student0 }
@@ -143,26 +150,34 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
         });
 
         it("students can enroll a course", async function () {
-          await courseManager.enrollCourse(0, false, { from: student0 });
-          expect(await courseManager.isStudent(0, student0)).to.be.true;
-          await courseManager.enrollCourse(0, false, { from: student1 });
-          expect(await courseManager.isStudent(0, student1)).to.be.true;
+          await courseManager.enrollCourse(COURSE_ID, false, {
+            from: student0,
+          });
+          expect(await courseManager.isStudent(COURSE_ID, student0)).to.be.true;
+          await courseManager.enrollCourse(COURSE_ID, false, {
+            from: student1,
+          });
+          expect(await courseManager.isStudent(COURSE_ID, student1)).to.be.true;
 
-          expect(await courseManager.isActive(0, student0)).to.be.true;
-          expect(await courseManager.isActive(0, student1)).to.be.true;
+          expect(await courseManager.isActive(COURSE_ID, student0)).to.be.true;
+          expect(await courseManager.isActive(COURSE_ID, student1)).to.be.true;
         });
 
         describe("After students enroll a course", function () {
           beforeEach("enroll the first course by students", async function () {
-            await courseManager.enrollCourse(0, false, { from: student0 });
-            await courseManager.enrollCourse(0, false, { from: student1 });
+            await courseManager.enrollCourse(COURSE_ID, false, {
+              from: student0,
+            });
+            await courseManager.enrollCourse(COURSE_ID, false, {
+              from: student1,
+            });
           });
 
           it("students can submit answers", async function () {
             // cannot submit wrong answer
             await expectRevert(
               courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 0,
                 1, // wrong answer
                 { from: student0 }
@@ -173,7 +188,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
             // cannot submit 2nd week answer before submit 1st week answer
             await expectRevert(
               courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 1,
                 courseData.week[1].answerBigEndian,
                 { from: student0 }
@@ -183,14 +198,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
             // can submit 1st week answer
             await courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               0,
               courseData.week[0].answerBigEndian,
               { from: student0 }
             );
 
             await courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               0,
               courseData.week[0].answerBigEndian,
               { from: student1 }
@@ -198,14 +213,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
             // can submit 2nd week answer
             await courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               1,
               courseData.week[1].answerBigEndian,
               { from: student0 }
             );
 
             await courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               1,
               courseData.week[1].answerBigEndian,
               { from: student1 }
@@ -283,7 +298,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
         it("students cannot submit answer before enroll", async function () {
           await expectRevert(
             courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               0,
               courseData.week[0].answerBigEndian,
               { from: student0 }
@@ -337,24 +352,26 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
         it("students can enroll a course", async function () {
           await _setupPermission();
 
-          await courseManager.enrollCourse(0, false, { from: student0 });
-          expect(await courseManager.isStudent(0, student0)).to.be.true;
-          await courseManager.enrollCourse(0, true, { from: student1 });
-          expect(await courseManager.isStudent(0, student1)).to.be.true;
+          await courseManager.enrollCourse(COURSE_ID, false, {
+            from: student0,
+          });
+          expect(await courseManager.isStudent(COURSE_ID, student0)).to.be.true;
+          await courseManager.enrollCourse(COURSE_ID, true, { from: student1 });
+          expect(await courseManager.isStudent(COURSE_ID, student1)).to.be.true;
 
-          expect(await courseManager.isActive(0, student0)).to.be.true;
-          expect(await courseManager.isActive(0, student1)).to.be.true;
+          expect(await courseManager.isActive(COURSE_ID, student0)).to.be.true;
+          expect(await courseManager.isActive(COURSE_ID, student1)).to.be.true;
 
           const {
             0: isFreeCourse0,
             1: prepaid0,
             2: streamedAmount0,
-          } = await courseManager.getStreamedAmount(0, student0);
+          } = await courseManager.getStreamedAmount(COURSE_ID, student0);
           const {
             0: isFreeCourse1,
             1: prepaid1,
             2: streamedAmount1,
-          } = await courseManager.getStreamedAmount(0, student1);
+          } = await courseManager.getStreamedAmount(COURSE_ID, student1);
 
           expect(isFreeCourse0).to.be.false;
           expect(isFreeCourse1).to.be.false;
@@ -367,8 +384,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
           expect(streamedAmount0.gt(toBN(0))).to.be.true; // pay some wei
           expect(streamedAmount1.toString()).to.be.eq("0");
 
-          const enrollment0 = await courseManager.getEnrollmentOf(0, student0);
-          const enrollment1 = await courseManager.getEnrollmentOf(0, student1);
+          const enrollment0 = await courseManager.getEnrollmentOf(
+            COURSE_ID,
+            student0
+          );
+          const enrollment1 = await courseManager.getEnrollmentOf(
+            COURSE_ID,
+            student1
+          );
 
           expect(enrollment0.finished).to.be.false;
           expect(enrollment1.finished).to.be.false;
@@ -388,15 +411,19 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
           beforeEach("enroll the first course by students", async function () {
             await _setupPermission();
 
-            await courseManager.enrollCourse(0, false, { from: student0 });
-            await courseManager.enrollCourse(0, true, { from: student1 });
+            await courseManager.enrollCourse(COURSE_ID, false, {
+              from: student0,
+            });
+            await courseManager.enrollCourse(COURSE_ID, true, {
+              from: student1,
+            });
           });
 
           it("students can submit answers", async function () {
             // cannot submit wrong answer
             await expectRevert(
               courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 0,
                 1, // wrong answer
                 { from: student0 }
@@ -407,7 +434,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
             // cannot submit 2nd week answer before submit 1st week answer
             await expectRevert(
               courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 1,
                 courseData.week[1].answerBigEndian,
                 { from: student0 }
@@ -417,14 +444,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
             // can submit 1st week answer
             await courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               0,
               courseData.week[0].answerBigEndian,
               { from: student0 }
             );
 
             await courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               0,
               courseData.week[0].answerBigEndian,
               { from: student1 }
@@ -432,14 +459,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
             // can submit 2nd week answer
             await courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               1,
               courseData.week[1].answerBigEndian,
               { from: student0 }
             );
 
             await courseManager.submitAnswer(
-              0,
+              COURSE_ID,
               1,
               courseData.week[1].answerBigEndian,
               { from: student1 }
@@ -448,7 +475,10 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
           describe("After 1.5 month later", function () {
             beforeEach("increase time 1.5 month", async function () {
-              const e = await courseManager.getEnrollmentOf(0, student0);
+              const e = await courseManager.getEnrollmentOf(
+                COURSE_ID,
+                student0
+              );
               await times.increaseTo(
                 // WTF... `e.enrolledAt` is string in runtime... not BN
                 toBN(e.enrolledAt.toString()).add(times.duration.days(45))
@@ -456,8 +486,10 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
             });
 
             it("students are active", async function () {
-              expect(await courseManager.isActive(0, student0)).to.be.true;
-              expect(await courseManager.isActive(0, student1)).to.be.true;
+              expect(await courseManager.isActive(COURSE_ID, student0)).to.be
+                .true;
+              expect(await courseManager.isActive(COURSE_ID, student1)).to.be
+                .true;
             });
 
             it("student0 paid a half of enrollment fee to payment receiver", async function () {
@@ -467,7 +499,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
                 .mul(toBN(45))
                 .div(toBN(90));
               const { 2: actualStreamedAmount0 } =
-                await courseManager.getStreamedAmount(0, student0);
+                await courseManager.getStreamedAmount(COURSE_ID, student0);
 
               // NOTE: tiny math error (≤1e5) may occur so we just calc diff
               const diff = expectedStreamedAmount0
@@ -493,14 +525,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
               const beforeLecturerBalance = await ibtx.balanceOf(lecturer);
 
               await courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 0,
                 courseData.week[0].answerBigEndian,
                 { from: student0 }
               );
 
               await courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 1,
                 courseData.week[1].answerBigEndian,
                 { from: student0 }
@@ -508,7 +540,10 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
               const afterLecturerBalance = await ibtx.balanceOf(lecturer);
 
-              const e = await courseManager.getEnrollmentOf(0, student0);
+              const e = await courseManager.getEnrollmentOf(
+                COURSE_ID,
+                student0
+              );
               expect(e.finished).to.be.true;
 
               const paymentReceiver = await PaymentReceiver.at(
@@ -548,14 +583,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
             it("student1 can submits all answers", async function () {
               await courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 0,
                 courseData.week[0].answerBigEndian,
                 { from: student1 }
               );
 
               await courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 1,
                 courseData.week[1].answerBigEndian,
                 { from: student1 }
@@ -565,7 +600,10 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
           describe("After 4 month later", function () {
             beforeEach("increase time 4 month", async function () {
-              const e = await courseManager.getEnrollmentOf(0, student0);
+              const e = await courseManager.getEnrollmentOf(
+                COURSE_ID,
+                student0
+              );
               await times.increaseTo(
                 // WTF... `e.enrolledAt` is string in runtime... not BN
                 toBN(e.enrolledAt.toString()).add(times.duration.days(120))
@@ -573,21 +611,22 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
             });
 
             it("student0 is still active", async function () {
-              expect(await courseManager.isActive(0, student0)).to.be.true;
+              expect(await courseManager.isActive(COURSE_ID, student0)).to.be
+                .true;
             });
 
             it("student0 pay up to enrollment fee if he submits all answer now", async function () {
               const beforeLecturerBalance = await ibtx.balanceOf(lecturer);
 
               await courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 0,
                 courseData.week[0].answerBigEndian,
                 { from: student0 }
               );
 
               await courseManager.submitAnswer(
-                0,
+                COURSE_ID,
                 1,
                 courseData.week[1].answerBigEndian,
                 { from: student0 }
@@ -595,7 +634,10 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
               const afterLecturerBalance = await ibtx.balanceOf(lecturer);
 
-              const e = await courseManager.getEnrollmentOf(0, student0);
+              const e = await courseManager.getEnrollmentOf(
+                COURSE_ID,
+                student0
+              );
               expect(e.finished).to.be.true;
 
               const paymentReceiver = await PaymentReceiver.at(

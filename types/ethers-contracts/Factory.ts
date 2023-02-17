@@ -35,6 +35,7 @@ export interface FactoryInterface extends utils.Interface {
     "renounceOwnership()": FunctionFragment;
     "transferOwnership(address)": FunctionFragment;
     "deployContracts()": FunctionFragment;
+    "mint()": FunctionFragment;
   };
 
   getFunction(
@@ -46,6 +47,7 @@ export interface FactoryInterface extends utils.Interface {
       | "renounceOwnership"
       | "transferOwnership"
       | "deployContracts"
+      | "mint"
   ): FunctionFragment;
 
   encodeFunctionData(
@@ -67,6 +69,7 @@ export interface FactoryInterface extends utils.Interface {
     functionFragment: "deployContracts",
     values?: undefined
   ): string;
+  encodeFunctionData(functionFragment: "mint", values?: undefined): string;
 
   decodeFunctionResult(
     functionFragment: "courseManager",
@@ -87,6 +90,7 @@ export interface FactoryInterface extends utils.Interface {
     functionFragment: "deployContracts",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "mint", data: BytesLike): Result;
 
   events: {
     "OwnershipTransferred(address,address)": EventFragment;
@@ -163,6 +167,13 @@ export interface Factory extends BaseContract {
     deployContracts(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<ContractTransaction>;
+
+    /**
+     * faucet IBTx to msg.sender
+     */
+    mint(
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<ContractTransaction>;
   };
 
   courseManager(overrides?: CallOverrides): Promise<string>;
@@ -195,6 +206,13 @@ export interface Factory extends BaseContract {
     overrides?: Overrides & { from?: PromiseOrValue<string> }
   ): Promise<ContractTransaction>;
 
+  /**
+   * faucet IBTx to msg.sender
+   */
+  mint(
+    overrides?: Overrides & { from?: PromiseOrValue<string> }
+  ): Promise<ContractTransaction>;
+
   callStatic: {
     courseManager(overrides?: CallOverrides): Promise<string>;
 
@@ -221,6 +239,11 @@ export interface Factory extends BaseContract {
     ): Promise<void>;
 
     deployContracts(overrides?: CallOverrides): Promise<void>;
+
+    /**
+     * faucet IBTx to msg.sender
+     */
+    mint(overrides?: CallOverrides): Promise<void>;
   };
 
   filters: {
@@ -264,6 +287,13 @@ export interface Factory extends BaseContract {
     deployContracts(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<BigNumber>;
+
+    /**
+     * faucet IBTx to msg.sender
+     */
+    mint(
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<BigNumber>;
   };
 
   populateTransaction: {
@@ -294,6 +324,13 @@ export interface Factory extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     deployContracts(
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<PopulatedTransaction>;
+
+    /**
+     * faucet IBTx to msg.sender
+     */
+    mint(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<PopulatedTransaction>;
   };

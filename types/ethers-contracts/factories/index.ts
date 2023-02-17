@@ -14,7 +14,6 @@ export { Factory__factory } from "./Factory__factory";
 export { IAccessControl__factory } from "./IAccessControl__factory";
 export { IAccessControlEnumerable__factory } from "./IAccessControlEnumerable__factory";
 export { IBT__factory } from "./IBT__factory";
-export { IBTx__factory } from "./IBTx__factory";
 export { IConstantFlowAgreementV1__factory } from "./IConstantFlowAgreementV1__factory";
 export { IERC165__factory } from "./IERC165__factory";
 export { IERC20__factory } from "./IERC20__factory";

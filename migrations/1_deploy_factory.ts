@@ -17,8 +17,4 @@ export default async function (deployer: Truffle.Deployer) {
   const Factory = artifacts.require("Factory");
   // deploy Factory contract
   await deployer.deploy(Factory, SUPERFLUID_FACTORY_ADDRESS);
-  const factory = await Factory.deployed();
-
-  // deploy other contracts
-  await factory.deployContracts();
 }

@@ -15,7 +15,6 @@ import { FactoryContract } from "./Factory";
 import { IAccessControlContract } from "./IAccessControl";
 import { IAccessControlEnumerableContract } from "./IAccessControlEnumerable";
 import { IBTContract } from "./IBT";
-import { IBTxContract } from "./IBTx";
 import { IConstantFlowAgreementV1Contract } from "./IConstantFlowAgreementV1";
 import { IERC165Contract } from "./IERC165";
 import { IERC20Contract } from "./IERC20";
@@ -52,7 +51,6 @@ declare global {
         name: "IAccessControlEnumerable"
       ): IAccessControlEnumerableContract;
       require(name: "IBT"): IBTContract;
-      require(name: "IBTx"): IBTxContract;
       require(
         name: "IConstantFlowAgreementV1"
       ): IConstantFlowAgreementV1Contract;
@@ -106,7 +104,6 @@ export {
   IAccessControlEnumerableInstance,
 } from "./IAccessControlEnumerable";
 export { IBTContract, IBTInstance } from "./IBT";
-export { IBTxContract, IBTxInstance } from "./IBTx";
 export {
   IConstantFlowAgreementV1Contract,
   IConstantFlowAgreementV1Instance,

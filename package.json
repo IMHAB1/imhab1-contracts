@@ -19,8 +19,9 @@
     "test:polygon_mumbai": "FORK_NETWORK=polygon_mumbai truffle test --network localhost",
     "test:optimism_goerli": "FORK_NETWORK=optimism_goerli truffle test --network localhost",
     "generate-types": "typechain --target=truffle-v5 './build/contracts/*.json' && typechain --target=ethers-v5 './build/contracts/*.json'",
-    "build": "truffle build && yarn generate-types",
-    "export-to-clielnt": "ts-node scripts/export-to-client.ts"
+    "build": "truffle build && npm run generate-types",
+    "export-to-clielnt": "ts-node scripts/export-to-client.ts",
+    "import-from-clielnt": "ts-node scripts/import-from-client.ts"
   },
   "repository": {
     "type": "git",
@@ -38,10 +39,12 @@
     "@superfluid-finance/ethereum-contracts": "^1.5.0",
     "@superfluid-finance/sdk-core": "^0.6.1",
     "ansi-colors": "^4.1.3",
+    "bigint-buffer": "^1.1.5",
     "chai": "^4.3.7",
     "ethers": "5.7.2",
     "glob": "^8.1.0",
-    "invariant": "^2.2.4"
+    "invariant": "^2.2.4",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "^0.5.16",
@@ -51,6 +54,7 @@
     "@types/chai": "^4.3.4",
     "@types/glob": "^8.0.1",
     "@types/invariant": "^2.2.35",
+    "@types/lodash": "^4.14.191",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.13.0",
     "dotenv": "^16.0.3",

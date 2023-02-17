@@ -84,6 +84,9 @@ export interface CourseManagerInterface extends utils.Interface {
     "isActive(uint256,address)": FunctionFragment;
     "encodeAnswers(uint256[])": FunctionFragment;
     "decodeAnswers(uint256,uint256)": FunctionFragment;
+    "getLecturer(uint256)": FunctionFragment;
+    "getEnrollmentFee(uint256)": FunctionFragment;
+    "getEnrollments(uint256)": FunctionFragment;
     "getEnrollmentOf(uint256,address)": FunctionFragment;
     "getStreamedAmount(uint256,address)": FunctionFragment;
   };
@@ -105,6 +108,9 @@ export interface CourseManagerInterface extends utils.Interface {
       | "isActive"
       | "encodeAnswers"
       | "decodeAnswers"
+      | "getLecturer"
+      | "getEnrollmentFee"
+      | "getEnrollments"
       | "getEnrollmentOf"
       | "getStreamedAmount"
   ): FunctionFragment;
@@ -165,6 +171,18 @@ export interface CourseManagerInterface extends utils.Interface {
     values: [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>]
   ): string;
   encodeFunctionData(
+    functionFragment: "getLecturer",
+    values: [PromiseOrValue<BigNumberish>]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getEnrollmentFee",
+    values: [PromiseOrValue<BigNumberish>]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getEnrollments",
+    values: [PromiseOrValue<BigNumberish>]
+  ): string;
+  encodeFunctionData(
     functionFragment: "getEnrollmentOf",
     values: [PromiseOrValue<BigNumberish>, PromiseOrValue<string>]
   ): string;
@@ -210,6 +228,18 @@ export interface CourseManagerInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "decodeAnswers",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getLecturer",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getEnrollmentFee",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getEnrollments",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -354,6 +384,21 @@ export interface CourseManager extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[BigNumber[]] & { answers: BigNumber[] }>;
 
+    getLecturer(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<[string]>;
+
+    getEnrollmentFee(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
+
+    getEnrollments(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<[CourseManager.EnrollmentStructOutput[]]>;
+
     getEnrollmentOf(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
@@ -460,6 +505,21 @@ export interface CourseManager extends BaseContract {
     overrides?: CallOverrides
   ): Promise<BigNumber[]>;
 
+  getLecturer(
+    courseId: PromiseOrValue<BigNumberish>,
+    overrides?: CallOverrides
+  ): Promise<string>;
+
+  getEnrollmentFee(
+    courseId: PromiseOrValue<BigNumberish>,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  getEnrollments(
+    courseId: PromiseOrValue<BigNumberish>,
+    overrides?: CallOverrides
+  ): Promise<CourseManager.EnrollmentStructOutput[]>;
+
   getEnrollmentOf(
     courseId: PromiseOrValue<BigNumberish>,
     student: PromiseOrValue<string>,
@@ -563,6 +623,21 @@ export interface CourseManager extends BaseContract {
       answerBigEndian: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<BigNumber[]>;
+
+    getLecturer(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    getEnrollmentFee(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getEnrollments(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<CourseManager.EnrollmentStructOutput[]>;
 
     getEnrollmentOf(
       courseId: PromiseOrValue<BigNumberish>,
@@ -680,6 +755,21 @@ export interface CourseManager extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
+    getLecturer(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getEnrollmentFee(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getEnrollments(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
     getEnrollmentOf(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
@@ -776,6 +866,21 @@ export interface CourseManager extends BaseContract {
     decodeAnswers(
       nAnswers: PromiseOrValue<BigNumberish>,
       answerBigEndian: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getLecturer(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getEnrollmentFee(
+      courseId: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getEnrollments(
+      courseId: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 

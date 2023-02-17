@@ -195,6 +195,31 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     txDetails?: Truffle.TransactionDetails
   ): Promise<BN[]>;
 
+  getLecturer(
+    courseId: number | BN | string,
+    txDetails?: Truffle.TransactionDetails
+  ): Promise<string>;
+
+  getEnrollmentFee(
+    courseId: number | BN | string,
+    txDetails?: Truffle.TransactionDetails
+  ): Promise<BN>;
+
+  getEnrollments(
+    courseId: number | BN | string,
+    txDetails?: Truffle.TransactionDetails
+  ): Promise<
+    {
+      student: string;
+      currentWeekIndex: BN;
+      flowRate: BN;
+      enrolledAt: BN;
+      paymentReceiver: string;
+      finished: boolean;
+      prepaid: boolean;
+    }[]
+  >;
+
   getEnrollmentOf(
     courseId: number | BN | string,
     student: string,
@@ -384,6 +409,31 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       answerBigEndian: number | BN | string,
       txDetails?: Truffle.TransactionDetails
     ): Promise<BN[]>;
+
+    getLecturer(
+      courseId: number | BN | string,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<string>;
+
+    getEnrollmentFee(
+      courseId: number | BN | string,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<BN>;
+
+    getEnrollments(
+      courseId: number | BN | string,
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<
+      {
+        student: string;
+        currentWeekIndex: BN;
+        flowRate: BN;
+        enrolledAt: BN;
+        paymentReceiver: string;
+        finished: boolean;
+        prepaid: boolean;
+      }[]
+    >;
 
     getEnrollmentOf(
       courseId: number | BN | string,

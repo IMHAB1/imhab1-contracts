@@ -1,3 +1,4 @@
+import { parseUnits } from "ethers/lib/utils";
 import invariant from "invariant";
 
 export const CHAIN_IDS = {
@@ -13,6 +14,8 @@ export const SUPERFLUID_FACTORY = {
   optimism: "0x8276469A443D5C6B7146BED45e2abCaD3B6adad9",
   optimism_goerli: "0x9aCc39d15e3f168c111a1D4F80271a9E526c9a9F",
 };
+
+export const DEFAULT_ENROLLMENT_FEE = parseUnits("90", 18).toString(); // 90 IBTx
 
 export function ensureSupportedNetwork(networkName: string) {
   invariant(

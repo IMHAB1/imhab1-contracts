@@ -103,7 +103,9 @@ module.exports = {
         ),
       network_id: CHAIN_IDS.optimism_goerli,
       chain_id: CHAIN_IDS.optimism_goerli,
-      gasPrice: 0.000001e9,
+      gasPrice: 0.0000001e9,
+      confirmations: 4,
+      timeoutBlocks: 10000,
     },
   },
 

@@ -26,6 +26,8 @@ contract CourseManager is Ownable {
         uint256 flowRate;
         uint256 enrolledAt;
         PaymentReceiver paymentReceiver;
+        bool finished;
+        bool prepaid;
     }
 
     struct Course {
@@ -138,9 +140,11 @@ contract CourseManager is Ownable {
         }
     }
 
-    // TODO: create CFA flow from student to lecturer
     /// @dev Enroll a course by student
-    function enrollCourse(uint256 courseId) external onlyValidCourse(courseId) {
+    function enrollCourse(
+        uint256 courseId,
+        bool isPrepay
+    ) external onlyValidCourse(courseId) {
         Course storage course = _courses[courseId];
 
         require(!course.isStudent[msg.sender], "ALREADY_REGISTERED");
@@ -148,23 +152,17 @@ contract CourseManager is Ownable {
         course.isStudent[msg.sender] = true;
         course.enrollmentIndice[msg.sender] = course.enrollments.length;
 
-        PaymentReceiver paymentReceiver;
-        uint256 flowRate;
-        if (course.enrollmentFee > 0) {
-            flowRate = (course.enrollmentFee) / PAYMENT_DURATION;
-
-            paymentReceiver = new PaymentReceiver(
+        uint256 flowRate = isPrepay
+            ? 0
+            : course.enrollmentFee / PAYMENT_DURATION;
+        PaymentReceiver paymentReceiver = flowRate > 0
+            ? new PaymentReceiver(
                 token,
+                course.lecturer,
                 msg.sender,
                 course.enrollmentFee
-            );
-
-            // token.createFlowFrom(
-            //     msg.sender,
-            //     address(paymentReceiver),
-            //     int96(uint96(flowRate))
-            // );
-        }
+            )
+            : PaymentReceiver(address(0));
 
         course.enrollments.push(
             Enrollment({
@@ -172,12 +170,28 @@ contract CourseManager is Ownable {
                 currentWeekIndex: 0,
                 flowRate: flowRate,
                 enrolledAt: block.timestamp,
-                paymentReceiver: paymentReceiver
+                paymentReceiver: paymentReceiver,
+                finished: false,
+                prepaid: isPrepay
             })
         );
 
-        if (address(paymentReceiver) != address(0)) {
-            paymentReceiver.updatePayment();
+        // pay fee to transfer if prepay
+        if (isPrepay) {
+            token.transferFrom(
+                msg.sender,
+                course.lecturer,
+                course.enrollmentFee
+            );
+        }
+
+        // create CFA from student to payment receiver
+        if (flowRate > 0) {
+            token.createFlowFrom(
+                msg.sender,
+                address(paymentReceiver),
+                1 // int96(uint96(flowRate))
+            );
         }
     }
 

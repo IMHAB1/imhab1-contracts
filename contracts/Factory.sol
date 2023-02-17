@@ -12,7 +12,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // import {IDAv1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/IDAv1Library.sol";
 // import {SuperTokenFactory} from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperTokenFactory.sol";
 
-// import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
 
 import {ISuperTokenFactory} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
 import {ISuperfluid, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
@@ -70,6 +70,20 @@ contract Factory is Ownable {
             type(int96).max
         );
         ibtx.setMaxFlowPermissions(address(courseManager));
+        // ibtx.updateFlowOperatorPermissions()
+
+        // (
+        //     ISuperfluid host,
+        //     IConstantFlowAgreementV1 cfa
+        // ) = _getAndCacheHostAndCFA(ibtx);
+
+        // cfa.updateFlowOperatorPermissions(
+        //     ibtx,
+        //     address(courseManager),
+        //     7,
+        //     type(int96).max,
+        //     ""
+        // );
     }
 
     function _deployIBT() internal returns (IBT _ibt) {
@@ -88,7 +102,8 @@ contract Factory is Ownable {
         _ibtx = superTokenFactory.createERC20Wrapper(
             IERC20(ibt),
             18,
-            ISuperTokenFactory.Upgradability.SEMI_UPGRADABLE,
+            // ISuperTokenFactory.Upgradability.SEMI_UPGRADABLE,
+            ISuperTokenFactory.Upgradability.NON_UPGRADABLE,
             "Super IMHAB1 Token",
             "IBTx"
         );
@@ -103,5 +118,50 @@ contract Factory is Ownable {
 
     function _deployCourseManager() internal returns (CourseManager _cm) {
         _cm = new CourseManager(ibtx);
+    }
+
+    // keccak256("org.superfluid-finance.apps.SuperTokenLibrary.v1.host")
+    bytes32 private constant _HOST_SLOT =
+        0x65599bf746e17a00ea62e3610586992d88101b78eec3cf380706621fb97ea837;
+    // keccak256("org.superfluid-finance.apps.SuperTokenLibrary.v1.cfa")
+    bytes32 private constant _CFA_SLOT =
+        0xb969d79d88acd02d04ed7ee7d43b949e7daf093d363abcfbbc43dfdfd1ce969a;
+    // keccak256("org.superfluid-finance.apps.SuperTokenLibrary.v1.ida");
+    bytes32 private constant _IDA_SLOT =
+        0xa832ee1924ea960211af2df07d65d166232018f613ac6708043cd8f8773eddeb;
+
+    // gets the host and cfa addrs for the token and caches it in storage for gas efficiency
+    // to be used in state changing methods
+    function _getAndCacheHostAndCFA(
+        ISuperToken token
+    ) private returns (ISuperfluid host, IConstantFlowAgreementV1 cfa) {
+        // check if already in contract storage...
+        assembly {
+            // solium-disable-line
+            host := sload(_HOST_SLOT)
+            cfa := sload(_CFA_SLOT)
+        }
+        if (address(cfa) == address(0)) {
+            // framework contract addrs not yet cached, retrieving now...
+            if (address(host) == address(0)) {
+                host = ISuperfluid(token.getHost());
+            }
+            cfa = IConstantFlowAgreementV1(
+                address(
+                    ISuperfluid(host).getAgreementClass(
+                        //keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")
+                        0xa9214cc96615e0085d3bb077758db69497dc2dce3b2b1e97bc93c3d18d83efd3
+                    )
+                )
+            );
+            // now that we got them and are in a transaction context, persist in storage
+            assembly {
+                // solium-disable-line
+                sstore(_HOST_SLOT, host)
+                sstore(_CFA_SLOT, cfa)
+            }
+        }
+        assert(address(host) != address(0));
+        assert(address(cfa) != address(0));
     }
 }

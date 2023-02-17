@@ -14,16 +14,23 @@ contract PaymentReceiver is Ownable {
 
     ISuperToken public token;
 
+    address public lecturer;
     address public student;
-    uint256 public enrolmentFee;
+    uint256 public enrollmentFee;
 
     bool internal _finished;
     bool internal _flowCreated;
 
-    constructor(ISuperToken _token, address _student, uint256 _enrolmentFee) {
+    constructor(
+        ISuperToken _token,
+        address _lecturer,
+        address _student,
+        uint256 _enrollmentFee
+    ) {
         token = _token;
+        lecturer = _lecturer;
         student = _student;
-        enrolmentFee = _enrolmentFee;
+        enrollmentFee = _enrollmentFee;
     }
 
     modifier onlyOwnerOrStudent() {
@@ -36,26 +43,19 @@ contract PaymentReceiver is Ownable {
 
     function updatePayment() external onlyOwnerOrStudent {
         if (!_finished) {
-            _createOrUpdateFlow();
+            uint256 balance = getCurrentBalance();
+
+            if (balance >= enrollmentFee) {
+                _finished = true;
+                token.transfer(lecturer, enrollmentFee);
+                returnRemainings();
+            }
         } else {
             returnRemainings();
         }
     }
 
-    function _createOrUpdateFlow() internal {
-        int96 flowRate;
-
-        if (!_flowCreated) {
-            // create flow from student to this
-            token.createFlowFrom(student, address(this), flowRate);
-        } else {
-            uint256 received = getCurrentBalance();
-            if (received > enrolmentFee) {
-                _finished = true;
-            }
-        }
-    }
-
+    /// @dev return overflowed token to student
     function returnRemainings() public onlyOwnerOrStudent {
         if (!_finished) return;
 

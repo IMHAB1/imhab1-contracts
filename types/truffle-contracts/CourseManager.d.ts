@@ -111,18 +111,22 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
   enrollCourse: {
     (
       courseId: number | BN | string,
+      isPrepay: boolean,
       txDetails?: Truffle.TransactionDetails
     ): Promise<Truffle.TransactionResponse<AllEvents>>;
     call(
       courseId: number | BN | string,
+      isPrepay: boolean,
       txDetails?: Truffle.TransactionDetails
     ): Promise<void>;
     sendTransaction(
       courseId: number | BN | string,
+      isPrepay: boolean,
       txDetails?: Truffle.TransactionDetails
     ): Promise<string>;
     estimateGas(
       courseId: number | BN | string,
+      isPrepay: boolean,
       txDetails?: Truffle.TransactionDetails
     ): Promise<number>;
   };
@@ -194,6 +198,8 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       flowRate: BN;
       enrolledAt: BN;
       paymentReceiver: string;
+      finished: boolean;
+      prepaid: boolean;
     }[]
   >;
 
@@ -207,6 +213,8 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     flowRate: BN;
     enrolledAt: BN;
     paymentReceiver: string;
+    finished: boolean;
+    prepaid: boolean;
   }>;
 
   isStudent(
@@ -301,18 +309,22 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     enrollCourse: {
       (
         courseId: number | BN | string,
+        isPrepay: boolean,
         txDetails?: Truffle.TransactionDetails
       ): Promise<Truffle.TransactionResponse<AllEvents>>;
       call(
         courseId: number | BN | string,
+        isPrepay: boolean,
         txDetails?: Truffle.TransactionDetails
       ): Promise<void>;
       sendTransaction(
         courseId: number | BN | string,
+        isPrepay: boolean,
         txDetails?: Truffle.TransactionDetails
       ): Promise<string>;
       estimateGas(
         courseId: number | BN | string,
+        isPrepay: boolean,
         txDetails?: Truffle.TransactionDetails
       ): Promise<number>;
     };
@@ -384,6 +396,8 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
         flowRate: BN;
         enrolledAt: BN;
         paymentReceiver: string;
+        finished: boolean;
+        prepaid: boolean;
       }[]
     >;
 
@@ -397,6 +411,8 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       flowRate: BN;
       enrolledAt: BN;
       paymentReceiver: string;
+      finished: boolean;
+      prepaid: boolean;
     }>;
 
     isStudent(

@@ -1,5 +1,8 @@
 import { expect } from "chai";
 import { ethers } from "ethers";
+import { Framework } from "@superfluid-finance/sdk-core";
+import { ConstantFlowAgreementV1 } from "@superfluid-finance/sdk-core";
+
 import {
   CourseManagerInstance,
   IBTInstance,
@@ -8,6 +11,8 @@ import {
 import { Snapshot } from "./utils/snapshot";
 
 import * as times from "./utils/times";
+import { CHAIN_ID } from "../lib/config";
+import { parseUnits } from "ethers/lib/utils";
 
 const { expectRevert } = require("@openzeppelin/test-helpers");
 
@@ -134,9 +139,9 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
         });
 
         it("students can enroll a course", async function () {
-          await courseManager.enrollCourse(0, { from: student0 });
+          await courseManager.enrollCourse(0, false, { from: student0 });
           expect(await courseManager.isStudent(0, student0)).to.be.true;
-          await courseManager.enrollCourse(0, { from: student1 });
+          await courseManager.enrollCourse(0, false, { from: student1 });
           expect(await courseManager.isStudent(0, student1)).to.be.true;
 
           expect(await courseManager.isActive(0, student0)).to.be.true;
@@ -145,8 +150,8 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
         describe("After students enroll a course", function () {
           beforeEach("enroll the first course by students", async function () {
-            await courseManager.enrollCourse(0, { from: student0 });
-            await courseManager.enrollCourse(0, { from: student1 });
+            await courseManager.enrollCourse(0, false, { from: student0 });
+            await courseManager.enrollCourse(0, false, { from: student1 });
           });
 
           it("students can submit answers", async function () {
@@ -207,6 +212,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
     });
 
     describe("For a 2-weeks paid course", function () {
+      beforeEach("setup tokens", async function () {
+        const value = parseUnits("1000000000", 18);
+        await ibt.mint(deployer, value.toString());
+        await ibt.approve(ibtx.address, value.toString());
+        await ibtx.upgradeTo(student0, value.div(2).toString(), "0x");
+        await ibtx.upgradeTo(student1, value.div(2).toString(), "0x");
+      });
+
       let courseData: {
         enrollmentFee: number | BN | string;
         week: {
@@ -275,23 +288,66 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
           );
         });
 
-        it("students can enroll a course", async function () {
-          // set superfluid permission
+        // set superfluid permission from user
+        async function _setupPermission() {
+          const sf = await Framework.create({
+            chainId: CHAIN_ID,
+            provider: ethersProvider,
+          });
 
-          await courseManager.enrollCourse(0, { from: student0 });
+          const ibtxst = await sf.loadSuperToken(ibtx.address);
+
+          const op = ibtxst.authorizeFlowOperatorWithFullControl({
+            flowOperator: courseManager.address,
+          });
+          const st0Data0 = await ibtxst.getFlowOperatorData({
+            sender: student0,
+            flowOperator: courseManager.address,
+            providerOrSigner: ethersProvider,
+          });
+          const st1Data0 = await ibtxst.getFlowOperatorData({
+            sender: student1,
+            flowOperator: courseManager.address,
+            providerOrSigner: ethersProvider,
+          });
+          expect(st0Data0.permissions).to.be.eq("0"); // NO PERMISSION
+          expect(st1Data0.permissions).to.be.eq("0"); // NO PERMISSION
+
+          await op.exec(ethersProvider.getSigner(student0));
+          await op.exec(ethersProvider.getSigner(student1));
+          const st0Data1 = await ibtxst.getFlowOperatorData({
+            sender: student0,
+            flowOperator: courseManager.address,
+            providerOrSigner: ethersProvider,
+          });
+          const st1Data1 = await ibtxst.getFlowOperatorData({
+            sender: student1,
+            flowOperator: courseManager.address,
+            providerOrSigner: ethersProvider,
+          });
+
+          expect(st0Data1.permissions).to.be.eq("7"); // CREATE / UPDATE / DELETE PERMISSION
+          expect(st1Data1.permissions).to.be.eq("7"); // CREATE / UPDATE / DELETE PERMISSION
+        }
+
+        it("students can enroll a course", async function () {
+          await _setupPermission();
+
+          await courseManager.enrollCourse(0, false, { from: student0 });
           expect(await courseManager.isStudent(0, student0)).to.be.true;
-          await courseManager.enrollCourse(0, { from: student1 });
+          await courseManager.enrollCourse(0, false, { from: student1 });
           expect(await courseManager.isStudent(0, student1)).to.be.true;
 
-          // not active now
-          expect(await courseManager.isActive(0, student0)).to.be.false;
-          expect(await courseManager.isActive(0, student1)).to.be.false;
+          expect(await courseManager.isActive(0, student0)).to.be.true;
+          expect(await courseManager.isActive(0, student1)).to.be.true;
         });
 
         describe("After students enroll a course", function () {
           beforeEach("enroll the first course by students", async function () {
-            await courseManager.enrollCourse(0, { from: student0 });
-            await courseManager.enrollCourse(0, { from: student1 });
+            await _setupPermission();
+
+            await courseManager.enrollCourse(0, false, { from: student0 });
+            await courseManager.enrollCourse(0, false, { from: student1 });
           });
 
           it("students can submit answers", async function () {

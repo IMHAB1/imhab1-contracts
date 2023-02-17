@@ -9,8 +9,9 @@ export interface PaymentReceiverContract
   extends Truffle.Contract<PaymentReceiverInstance> {
   "new"(
     _token: string,
+    _lecturer: string,
     _student: string,
-    _enrolmentFee: number | BN | string,
+    _enrollmentFee: number | BN | string,
     meta?: Truffle.TransactionDetails
   ): Promise<PaymentReceiverInstance>;
 }
@@ -28,7 +29,9 @@ export interface OwnershipTransferred {
 type AllEvents = OwnershipTransferred;
 
 export interface PaymentReceiverInstance extends Truffle.ContractInstance {
-  enrolmentFee(txDetails?: Truffle.TransactionDetails): Promise<BN>;
+  enrollmentFee(txDetails?: Truffle.TransactionDetails): Promise<BN>;
+
+  lecturer(txDetails?: Truffle.TransactionDetails): Promise<string>;
 
   /**
    * Returns the address of the current owner.
@@ -81,6 +84,9 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
     estimateGas(txDetails?: Truffle.TransactionDetails): Promise<number>;
   };
 
+  /**
+   * return overflowed token to student
+   */
   returnRemainings: {
     (txDetails?: Truffle.TransactionDetails): Promise<
       Truffle.TransactionResponse<AllEvents>
@@ -95,7 +101,9 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
   isActive(txDetails?: Truffle.TransactionDetails): Promise<boolean>;
 
   methods: {
-    enrolmentFee(txDetails?: Truffle.TransactionDetails): Promise<BN>;
+    enrollmentFee(txDetails?: Truffle.TransactionDetails): Promise<BN>;
+
+    lecturer(txDetails?: Truffle.TransactionDetails): Promise<string>;
 
     /**
      * Returns the address of the current owner.
@@ -148,6 +156,9 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
       estimateGas(txDetails?: Truffle.TransactionDetails): Promise<number>;
     };
 
+    /**
+     * return overflowed token to student
+     */
     returnRemainings: {
       (txDetails?: Truffle.TransactionDetails): Promise<
         Truffle.TransactionResponse<AllEvents>

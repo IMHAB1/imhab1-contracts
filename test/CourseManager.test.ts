@@ -12,7 +12,7 @@ import { Snapshot } from "./utils/snapshot";
 
 import * as times from "./utils/times";
 import { CHAIN_ID } from "../lib/config";
-import { parseUnits } from "ethers/lib/utils";
+import { formatUnits, parseUnits } from "ethers/lib/utils";
 
 const { expectRevert } = require("@openzeppelin/test-helpers");
 
@@ -20,7 +20,10 @@ const ethersProvider = new ethers.providers.Web3Provider(
   web3.currentProvider as any
 );
 
-const { toBN } = web3.utils;
+const { toBN, toWei } = web3.utils;
+
+const ENROLLMENT_FEE = toBN(parseUnits("90", 18).toString()); // 1 IBTx/day
+const TINY_ERROR = toBN(parseUnits("0.001", 18).toString());
 
 contract("CourseManager", (accounts: Truffle.Accounts) => {
   const [deployer, lecturer, student0, student1] = accounts;
@@ -29,6 +32,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
   const CourseManager = artifacts.require("CourseManager");
   const IBT = artifacts.require("IBT");
   const ISuperToken = artifacts.require("ISuperToken");
+  const PaymentReceiver = artifacts.require("PaymentReceiver");
 
   let courseManager: CourseManagerInstance;
   let ibt: IBTInstance;
@@ -248,7 +252,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
         );
 
         courseData = {
-          enrollmentFee: "100000000",
+          enrollmentFee: ENROLLMENT_FEE,
           week,
         };
       });
@@ -264,7 +268,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
         );
       });
 
-      describe("After course is added", async function () {
+      describe("After course is added (student0: superfluid, student1: prepay)", async function () {
         beforeEach("add a course by lecturer", async function () {
           await courseManager.addCourse(
             courseData.enrollmentFee,
@@ -289,45 +293,45 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
         });
 
         // set superfluid permission from user
+        //  - student0: superfluid
+        //  - student1: prepay
         async function _setupPermission() {
-          const sf = await Framework.create({
-            chainId: CHAIN_ID,
-            provider: ethersProvider,
-          });
+          // set permission from student0 (superfluid - superfluid's sdk)
+          {
+            const sf = await Framework.create({
+              chainId: CHAIN_ID,
+              provider: ethersProvider,
+            });
 
-          const ibtxst = await sf.loadSuperToken(ibtx.address);
+            const ibtxst = await sf.loadSuperToken(ibtx.address);
 
-          const op = ibtxst.authorizeFlowOperatorWithFullControl({
-            flowOperator: courseManager.address,
-          });
-          const st0Data0 = await ibtxst.getFlowOperatorData({
-            sender: student0,
-            flowOperator: courseManager.address,
-            providerOrSigner: ethersProvider,
-          });
-          const st1Data0 = await ibtxst.getFlowOperatorData({
-            sender: student1,
-            flowOperator: courseManager.address,
-            providerOrSigner: ethersProvider,
-          });
-          expect(st0Data0.permissions).to.be.eq("0"); // NO PERMISSION
-          expect(st1Data0.permissions).to.be.eq("0"); // NO PERMISSION
+            const op = ibtxst.authorizeFlowOperatorWithFullControl({
+              flowOperator: courseManager.address,
+            });
+            const st0Data0 = await ibtxst.getFlowOperatorData({
+              sender: student0,
+              flowOperator: courseManager.address,
+              providerOrSigner: ethersProvider,
+            });
+            expect(st0Data0.permissions).to.be.eq("0"); // NO PERMISSION
 
-          await op.exec(ethersProvider.getSigner(student0));
-          await op.exec(ethersProvider.getSigner(student1));
-          const st0Data1 = await ibtxst.getFlowOperatorData({
-            sender: student0,
-            flowOperator: courseManager.address,
-            providerOrSigner: ethersProvider,
-          });
-          const st1Data1 = await ibtxst.getFlowOperatorData({
-            sender: student1,
-            flowOperator: courseManager.address,
-            providerOrSigner: ethersProvider,
-          });
+            await op.exec(ethersProvider.getSigner(student0));
+            const st0Data1 = await ibtxst.getFlowOperatorData({
+              sender: student0,
+              flowOperator: courseManager.address,
+              providerOrSigner: ethersProvider,
+            });
+            expect(st0Data1.permissions).to.be.eq("7"); // CREATE / UPDATE / DELETE PERMISSION
+          }
 
-          expect(st0Data1.permissions).to.be.eq("7"); // CREATE / UPDATE / DELETE PERMISSION
-          expect(st1Data1.permissions).to.be.eq("7"); // CREATE / UPDATE / DELETE PERMISSION
+          // set permission from student1 (prepay - ERC20#approve)
+          {
+            await ibtx.approve(
+              courseManager.address,
+              ethers.constants.MaxUint256.toString(),
+              { from: student1 }
+            );
+          }
         }
 
         it("students can enroll a course", async function () {
@@ -335,11 +339,49 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
 
           await courseManager.enrollCourse(0, false, { from: student0 });
           expect(await courseManager.isStudent(0, student0)).to.be.true;
-          await courseManager.enrollCourse(0, false, { from: student1 });
+          await courseManager.enrollCourse(0, true, { from: student1 });
           expect(await courseManager.isStudent(0, student1)).to.be.true;
 
           expect(await courseManager.isActive(0, student0)).to.be.true;
           expect(await courseManager.isActive(0, student1)).to.be.true;
+
+          const {
+            0: isFreeCourse0,
+            1: prepaid0,
+            2: streamedAmount0,
+          } = await courseManager.getStreamedAmount(0, student0);
+          const {
+            0: isFreeCourse1,
+            1: prepaid1,
+            2: streamedAmount1,
+          } = await courseManager.getStreamedAmount(0, student1);
+
+          expect(isFreeCourse0).to.be.false;
+          expect(isFreeCourse1).to.be.false;
+
+          // check prepaid
+          expect(prepaid0).to.be.false;
+          expect(prepaid1).to.be.true;
+
+          // check streamd amount
+          expect(streamedAmount0.gt(toBN(0))).to.be.true; // pay some wei
+          expect(streamedAmount1.toString()).to.be.eq("0");
+
+          const enrollment0 = await courseManager.getEnrollmentOf(0, student0);
+          const enrollment1 = await courseManager.getEnrollmentOf(0, student1);
+
+          expect(enrollment0.finished).to.be.false;
+          expect(enrollment1.finished).to.be.false;
+
+          expect(enrollment0.prepaid).to.be.false;
+          expect(enrollment1.prepaid).to.be.true;
+
+          // check enrollment0.flowRate == courseData.enrollmentFee / 90 days
+          expect(enrollment0.flowRate.toString()).to.be.eq(
+            toBN(courseData.enrollmentFee.toString())
+              .div(times.duration.days(90))
+              .toString()
+          );
         });
 
         describe("After students enroll a course", function () {
@@ -347,7 +389,7 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
             await _setupPermission();
 
             await courseManager.enrollCourse(0, false, { from: student0 });
-            await courseManager.enrollCourse(0, false, { from: student1 });
+            await courseManager.enrollCourse(0, true, { from: student1 });
           });
 
           it("students can submit answers", async function () {
@@ -402,6 +444,194 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
               courseData.week[1].answerBigEndian,
               { from: student1 }
             );
+          });
+
+          describe("After 1.5 month later", function () {
+            beforeEach("increase time 1.5 month", async function () {
+              const e = await courseManager.getEnrollmentOf(0, student0);
+              await times.increaseTo(
+                // WTF... `e.enrolledAt` is string in runtime... not BN
+                toBN(e.enrolledAt.toString()).add(times.duration.days(45))
+              );
+            });
+
+            it("students are active", async function () {
+              expect(await courseManager.isActive(0, student0)).to.be.true;
+              expect(await courseManager.isActive(0, student1)).to.be.true;
+            });
+
+            it("student0 paid a half of enrollment fee to payment receiver", async function () {
+              const expectedStreamedAmount0 = toBN(
+                courseData.enrollmentFee.toString()
+              )
+                .mul(toBN(45))
+                .div(toBN(90));
+              const { 2: actualStreamedAmount0 } =
+                await courseManager.getStreamedAmount(0, student0);
+
+              // NOTE: tiny math error (≤1e5) may occur so we just calc diff
+              const diff = expectedStreamedAmount0
+                .sub(actualStreamedAmount0)
+                .abs();
+
+              expect(
+                diff.lt(TINY_ERROR),
+                `diff: ${formatUnits(
+                  diff.toString(),
+                  18
+                )} (expected: ${formatUnits(
+                  expectedStreamedAmount0.toString(),
+                  18
+                )} actual: ${formatUnits(
+                  actualStreamedAmount0.toString(),
+                  18
+                )})`
+              ).to.be.true;
+            });
+
+            it("student0 pay up to a half of enrollment fee if he submits all answer now", async function () {
+              const beforeLecturerBalance = await ibtx.balanceOf(lecturer);
+
+              await courseManager.submitAnswer(
+                0,
+                0,
+                courseData.week[0].answerBigEndian,
+                { from: student0 }
+              );
+
+              await courseManager.submitAnswer(
+                0,
+                1,
+                courseData.week[1].answerBigEndian,
+                { from: student0 }
+              );
+
+              const afterLecturerBalance = await ibtx.balanceOf(lecturer);
+
+              const e = await courseManager.getEnrollmentOf(0, student0);
+              expect(e.finished).to.be.true;
+
+              const paymentReceiver = await PaymentReceiver.at(
+                e.paymentReceiver
+              );
+
+              expect(await paymentReceiver.finished()).to.be.true;
+
+              const actualLecturerTokenGain = afterLecturerBalance.sub(
+                beforeLecturerBalance
+              );
+              const expectedLecturerTokenGain = toBN(
+                courseData.enrollmentFee.toString()
+              ).div(toBN(2));
+              const lecturerTokenGainDiff = expectedLecturerTokenGain
+                .sub(actualLecturerTokenGain)
+                .abs();
+
+              expect(
+                lecturerTokenGainDiff.lt(TINY_ERROR),
+                `diff: ${formatUnits(
+                  lecturerTokenGainDiff.toString(),
+                  18
+                )} (expected: ${formatUnits(
+                  expectedLecturerTokenGain.toString(),
+                  18
+                )} actual: ${formatUnits(
+                  actualLecturerTokenGain.toString(),
+                  18
+                )})`
+              ).to.be.true;
+
+              expect(
+                (await ibtx.balanceOf(e.paymentReceiver)).toString()
+              ).to.be.eq("0");
+            });
+
+            it("student1 can submits all answers", async function () {
+              await courseManager.submitAnswer(
+                0,
+                0,
+                courseData.week[0].answerBigEndian,
+                { from: student1 }
+              );
+
+              await courseManager.submitAnswer(
+                0,
+                1,
+                courseData.week[1].answerBigEndian,
+                { from: student1 }
+              );
+            });
+          });
+
+          describe("After 4 month later", function () {
+            beforeEach("increase time 4 month", async function () {
+              const e = await courseManager.getEnrollmentOf(0, student0);
+              await times.increaseTo(
+                // WTF... `e.enrolledAt` is string in runtime... not BN
+                toBN(e.enrolledAt.toString()).add(times.duration.days(120))
+              );
+            });
+
+            it("student0 is still active", async function () {
+              expect(await courseManager.isActive(0, student0)).to.be.true;
+            });
+
+            it("student0 pay up to enrollment fee if he submits all answer now", async function () {
+              const beforeLecturerBalance = await ibtx.balanceOf(lecturer);
+
+              await courseManager.submitAnswer(
+                0,
+                0,
+                courseData.week[0].answerBigEndian,
+                { from: student0 }
+              );
+
+              await courseManager.submitAnswer(
+                0,
+                1,
+                courseData.week[1].answerBigEndian,
+                { from: student0 }
+              );
+
+              const afterLecturerBalance = await ibtx.balanceOf(lecturer);
+
+              const e = await courseManager.getEnrollmentOf(0, student0);
+              expect(e.finished).to.be.true;
+
+              const paymentReceiver = await PaymentReceiver.at(
+                e.paymentReceiver
+              );
+
+              expect(await paymentReceiver.finished()).to.be.true;
+
+              const actualLecturerTokenGain = afterLecturerBalance.sub(
+                beforeLecturerBalance
+              );
+              const expectedLecturerTokenGain = toBN(
+                courseData.enrollmentFee.toString()
+              );
+              const lecturerTokenGainDiff = expectedLecturerTokenGain
+                .sub(actualLecturerTokenGain)
+                .abs();
+
+              expect(
+                lecturerTokenGainDiff.lt(toBN("100000000")),
+                `diff: ${formatUnits(
+                  lecturerTokenGainDiff.toString(),
+                  18
+                )} (expected: ${formatUnits(
+                  expectedLecturerTokenGain.toString(),
+                  18
+                )} actual: ${formatUnits(
+                  actualLecturerTokenGain.toString(),
+                  18
+                )})`
+              ).to.be.true;
+
+              expect(
+                (await ibtx.balanceOf(e.paymentReceiver)).toString()
+              ).to.be.eq("0");
+            });
           });
         });
       });

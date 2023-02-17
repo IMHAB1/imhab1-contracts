@@ -31,6 +31,8 @@ type AllEvents = OwnershipTransferred;
 export interface PaymentReceiverInstance extends Truffle.ContractInstance {
   enrollmentFee(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
+  finished(txDetails?: Truffle.TransactionDetails): Promise<boolean>;
+
   lecturer(txDetails?: Truffle.TransactionDetails): Promise<string>;
 
   /**
@@ -87,7 +89,7 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
   /**
    * return overflowed token to student
    */
-  returnRemainings: {
+  refundResidual: {
     (txDetails?: Truffle.TransactionDetails): Promise<
       Truffle.TransactionResponse<AllEvents>
     >;
@@ -100,8 +102,19 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
 
   isActive(txDetails?: Truffle.TransactionDetails): Promise<boolean>;
 
+  forceFinish: {
+    (txDetails?: Truffle.TransactionDetails): Promise<
+      Truffle.TransactionResponse<AllEvents>
+    >;
+    call(txDetails?: Truffle.TransactionDetails): Promise<void>;
+    sendTransaction(txDetails?: Truffle.TransactionDetails): Promise<string>;
+    estimateGas(txDetails?: Truffle.TransactionDetails): Promise<number>;
+  };
+
   methods: {
     enrollmentFee(txDetails?: Truffle.TransactionDetails): Promise<BN>;
+
+    finished(txDetails?: Truffle.TransactionDetails): Promise<boolean>;
 
     lecturer(txDetails?: Truffle.TransactionDetails): Promise<string>;
 
@@ -159,7 +172,7 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
     /**
      * return overflowed token to student
      */
-    returnRemainings: {
+    refundResidual: {
       (txDetails?: Truffle.TransactionDetails): Promise<
         Truffle.TransactionResponse<AllEvents>
       >;
@@ -171,6 +184,15 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
     getCurrentBalance(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
     isActive(txDetails?: Truffle.TransactionDetails): Promise<boolean>;
+
+    forceFinish: {
+      (txDetails?: Truffle.TransactionDetails): Promise<
+        Truffle.TransactionResponse<AllEvents>
+      >;
+      call(txDetails?: Truffle.TransactionDetails): Promise<void>;
+      sendTransaction(txDetails?: Truffle.TransactionDetails): Promise<string>;
+      estimateGas(txDetails?: Truffle.TransactionDetails): Promise<number>;
+    };
   };
 
   getPastEvents(event: string): Promise<EventData[]>;

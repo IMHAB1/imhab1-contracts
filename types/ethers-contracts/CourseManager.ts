@@ -70,6 +70,9 @@ export declare namespace CourseManager {
 export interface CourseManagerInterface extends utils.Interface {
   functions: {
     "PAYMENT_DURATION()": FunctionFragment;
+    "courses(uint256)": FunctionFragment;
+    "enrollmentIndice(uint256,address)": FunctionFragment;
+    "isStudent(uint256,address)": FunctionFragment;
     "nCourses()": FunctionFragment;
     "owner()": FunctionFragment;
     "renounceOwnership()": FunctionFragment;
@@ -81,16 +84,16 @@ export interface CourseManagerInterface extends utils.Interface {
     "isActive(uint256,address)": FunctionFragment;
     "encodeAnswers(uint256[])": FunctionFragment;
     "decodeAnswers(uint256,uint256)": FunctionFragment;
-    "getProfessor(uint256)": FunctionFragment;
-    "getEnrollFee(uint256)": FunctionFragment;
-    "getEnrollments(uint256)": FunctionFragment;
     "getEnrollmentOf(uint256,address)": FunctionFragment;
-    "isStudent(uint256,address)": FunctionFragment;
+    "getStreamedAmount(uint256,address)": FunctionFragment;
   };
 
   getFunction(
     nameOrSignatureOrTopic:
       | "PAYMENT_DURATION"
+      | "courses"
+      | "enrollmentIndice"
+      | "isStudent"
       | "nCourses"
       | "owner"
       | "renounceOwnership"
@@ -102,16 +105,25 @@ export interface CourseManagerInterface extends utils.Interface {
       | "isActive"
       | "encodeAnswers"
       | "decodeAnswers"
-      | "getProfessor"
-      | "getEnrollFee"
-      | "getEnrollments"
       | "getEnrollmentOf"
-      | "isStudent"
+      | "getStreamedAmount"
   ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "PAYMENT_DURATION",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "courses",
+    values: [PromiseOrValue<BigNumberish>]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "enrollmentIndice",
+    values: [PromiseOrValue<BigNumberish>, PromiseOrValue<string>]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "isStudent",
+    values: [PromiseOrValue<BigNumberish>, PromiseOrValue<string>]
   ): string;
   encodeFunctionData(functionFragment: "nCourses", values?: undefined): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
@@ -153,23 +165,11 @@ export interface CourseManagerInterface extends utils.Interface {
     values: [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>]
   ): string;
   encodeFunctionData(
-    functionFragment: "getProfessor",
-    values: [PromiseOrValue<BigNumberish>]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getEnrollFee",
-    values: [PromiseOrValue<BigNumberish>]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getEnrollments",
-    values: [PromiseOrValue<BigNumberish>]
-  ): string;
-  encodeFunctionData(
     functionFragment: "getEnrollmentOf",
     values: [PromiseOrValue<BigNumberish>, PromiseOrValue<string>]
   ): string;
   encodeFunctionData(
-    functionFragment: "isStudent",
+    functionFragment: "getStreamedAmount",
     values: [PromiseOrValue<BigNumberish>, PromiseOrValue<string>]
   ): string;
 
@@ -177,6 +177,12 @@ export interface CourseManagerInterface extends utils.Interface {
     functionFragment: "PAYMENT_DURATION",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "courses", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "enrollmentIndice",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "isStudent", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "nCourses", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
@@ -207,22 +213,13 @@ export interface CourseManagerInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "getProfessor",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getEnrollFee",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getEnrollments",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "getEnrollmentOf",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "isStudent", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getStreamedAmount",
+    data: BytesLike
+  ): Result;
 
   events: {
     "OwnershipTransferred(address,address)": EventFragment;
@@ -271,6 +268,25 @@ export interface CourseManager extends BaseContract {
 
   functions: {
     PAYMENT_DURATION(overrides?: CallOverrides): Promise<[BigNumber]>;
+
+    courses(
+      arg0: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<
+      [string, BigNumber] & { lecturer: string; enrollmentFee: BigNumber }
+    >;
+
+    enrollmentIndice(
+      arg0: PromiseOrValue<BigNumberish>,
+      arg1: PromiseOrValue<string>,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
+
+    isStudent(
+      arg0: PromiseOrValue<BigNumberish>,
+      arg1: PromiseOrValue<string>,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
 
     nCourses(overrides?: CallOverrides): Promise<[BigNumber]>;
 
@@ -338,35 +354,45 @@ export interface CourseManager extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[BigNumber[]] & { answers: BigNumber[] }>;
 
-    getProfessor(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<[string]>;
-
-    getEnrollFee(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<[BigNumber]>;
-
-    getEnrollments(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<[CourseManager.EnrollmentStructOutput[]]>;
-
     getEnrollmentOf(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
     ): Promise<[CourseManager.EnrollmentStructOutput]>;
 
-    isStudent(
+    getStreamedAmount(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
-    ): Promise<[boolean]>;
+    ): Promise<
+      [boolean, boolean, BigNumber] & {
+        isFreeCourse: boolean;
+        prepaid: boolean;
+        streamedAmount: BigNumber;
+      }
+    >;
   };
 
   PAYMENT_DURATION(overrides?: CallOverrides): Promise<BigNumber>;
+
+  courses(
+    arg0: PromiseOrValue<BigNumberish>,
+    overrides?: CallOverrides
+  ): Promise<
+    [string, BigNumber] & { lecturer: string; enrollmentFee: BigNumber }
+  >;
+
+  enrollmentIndice(
+    arg0: PromiseOrValue<BigNumberish>,
+    arg1: PromiseOrValue<string>,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  isStudent(
+    arg0: PromiseOrValue<BigNumberish>,
+    arg1: PromiseOrValue<string>,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
 
   nCourses(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -434,35 +460,45 @@ export interface CourseManager extends BaseContract {
     overrides?: CallOverrides
   ): Promise<BigNumber[]>;
 
-  getProfessor(
-    courseId: PromiseOrValue<BigNumberish>,
-    overrides?: CallOverrides
-  ): Promise<string>;
-
-  getEnrollFee(
-    courseId: PromiseOrValue<BigNumberish>,
-    overrides?: CallOverrides
-  ): Promise<BigNumber>;
-
-  getEnrollments(
-    courseId: PromiseOrValue<BigNumberish>,
-    overrides?: CallOverrides
-  ): Promise<CourseManager.EnrollmentStructOutput[]>;
-
   getEnrollmentOf(
     courseId: PromiseOrValue<BigNumberish>,
     student: PromiseOrValue<string>,
     overrides?: CallOverrides
   ): Promise<CourseManager.EnrollmentStructOutput>;
 
-  isStudent(
+  getStreamedAmount(
     courseId: PromiseOrValue<BigNumberish>,
     student: PromiseOrValue<string>,
     overrides?: CallOverrides
-  ): Promise<boolean>;
+  ): Promise<
+    [boolean, boolean, BigNumber] & {
+      isFreeCourse: boolean;
+      prepaid: boolean;
+      streamedAmount: BigNumber;
+    }
+  >;
 
   callStatic: {
     PAYMENT_DURATION(overrides?: CallOverrides): Promise<BigNumber>;
+
+    courses(
+      arg0: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<
+      [string, BigNumber] & { lecturer: string; enrollmentFee: BigNumber }
+    >;
+
+    enrollmentIndice(
+      arg0: PromiseOrValue<BigNumberish>,
+      arg1: PromiseOrValue<string>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    isStudent(
+      arg0: PromiseOrValue<BigNumberish>,
+      arg1: PromiseOrValue<string>,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
 
     nCourses(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -528,32 +564,23 @@ export interface CourseManager extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber[]>;
 
-    getProfessor(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<string>;
-
-    getEnrollFee(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    getEnrollments(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<CourseManager.EnrollmentStructOutput[]>;
-
     getEnrollmentOf(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
     ): Promise<CourseManager.EnrollmentStructOutput>;
 
-    isStudent(
+    getStreamedAmount(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
-    ): Promise<boolean>;
+    ): Promise<
+      [boolean, boolean, BigNumber] & {
+        isFreeCourse: boolean;
+        prepaid: boolean;
+        streamedAmount: BigNumber;
+      }
+    >;
   };
 
   filters: {
@@ -569,6 +596,23 @@ export interface CourseManager extends BaseContract {
 
   estimateGas: {
     PAYMENT_DURATION(overrides?: CallOverrides): Promise<BigNumber>;
+
+    courses(
+      arg0: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    enrollmentIndice(
+      arg0: PromiseOrValue<BigNumberish>,
+      arg1: PromiseOrValue<string>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    isStudent(
+      arg0: PromiseOrValue<BigNumberish>,
+      arg1: PromiseOrValue<string>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
 
     nCourses(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -636,28 +680,13 @@ export interface CourseManager extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    getProfessor(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    getEnrollFee(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    getEnrollments(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
     getEnrollmentOf(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    isStudent(
+    getStreamedAmount(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
@@ -666,6 +695,23 @@ export interface CourseManager extends BaseContract {
 
   populateTransaction: {
     PAYMENT_DURATION(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    courses(
+      arg0: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    enrollmentIndice(
+      arg0: PromiseOrValue<BigNumberish>,
+      arg1: PromiseOrValue<string>,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    isStudent(
+      arg0: PromiseOrValue<BigNumberish>,
+      arg1: PromiseOrValue<string>,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
 
     nCourses(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
@@ -733,28 +779,13 @@ export interface CourseManager extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    getProfessor(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    getEnrollFee(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    getEnrollments(
-      courseId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
     getEnrollmentOf(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    isStudent(
+    getStreamedAmount(
       courseId: PromiseOrValue<BigNumberish>,
       student: PromiseOrValue<string>,
       overrides?: CallOverrides

@@ -18,8 +18,7 @@ contract PaymentReceiver is Ownable {
     address public student;
     uint256 public enrollmentFee;
 
-    bool internal _finished;
-    bool internal _flowCreated;
+    bool public finished; // true if student pays all
 
     constructor(
         ISuperToken _token,
@@ -42,22 +41,22 @@ contract PaymentReceiver is Ownable {
     }
 
     function updatePayment() external onlyOwnerOrStudent {
-        if (!_finished) {
+        if (!finished) {
             uint256 balance = getCurrentBalance();
 
             if (balance >= enrollmentFee) {
-                _finished = true;
+                finished = true;
                 token.transfer(lecturer, enrollmentFee);
-                returnRemainings();
+                refundResidual();
             }
         } else {
-            returnRemainings();
+            refundResidual();
         }
     }
 
     /// @dev return overflowed token to student
-    function returnRemainings() public onlyOwnerOrStudent {
-        if (!_finished) return;
+    function refundResidual() public onlyOwnerOrStudent {
+        if (!finished) return;
 
         uint256 balance = getCurrentBalance();
 
@@ -82,6 +81,11 @@ contract PaymentReceiver is Ownable {
     }
 
     function isActive() public view returns (bool) {
+        if (finished) return true;
+
+        uint256 balance = getCurrentBalance();
+        if (balance >= enrollmentFee) return true;
+
         (
             uint256 lastUpdated,
             int96 flowRate,
@@ -95,5 +99,13 @@ contract PaymentReceiver is Ownable {
         owedDeposit;
 
         return deposit > 0;
+    }
+
+    function forceFinish() external onlyOwner {
+        if (finished) return;
+
+        uint256 received = getCurrentBalance();
+        finished = true;
+        token.transfer(lecturer, received);
     }
 }

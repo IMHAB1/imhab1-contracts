@@ -10,11 +10,10 @@ import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contra
 
 import {PaymentReceiver} from "./PaymentReceiver.sol";
 
-// superfluid flow는 3개월동안
-
 contract CourseManager is Ownable {
     using SuperTokenV1Library for ISuperToken;
 
+    /// @dev We may not record answer contract to prevent cheating, but we do for simiple implementation...
     struct Week {
         uint256 nAnswers; // a number of answers
         uint256 answerBigEndian; // compacted answers in the unit of hex. e.g., if answers = [1, 4, 15], answerBigEndian = 0xf41
@@ -26,8 +25,8 @@ contract CourseManager is Ownable {
         uint256 flowRate;
         uint256 enrolledAt;
         PaymentReceiver paymentReceiver;
-        bool finished;
-        bool prepaid;
+        bool finished; // true if student submits all answer
+        bool prepaid; // true if student pay the fee when enroll
     }
 
     struct Course {
@@ -35,8 +34,6 @@ contract CourseManager is Ownable {
         uint256 enrollmentFee;
         Week[] week; // NOTE: cannot use `weeks` because it is a reserved word in solidity....
         Enrollment[] enrollments;
-        mapping(address => bool) isStudent;
-        mapping(address => uint256) enrollmentIndice;
     }
 
     uint256 public constant PAYMENT_DURATION = 90 days;
@@ -44,7 +41,14 @@ contract CourseManager is Ownable {
     ISuperToken public token;
 
     // courseId => Course
-    mapping(uint256 => Course) internal _courses;
+    mapping(uint256 => Course) public courses;
+
+    // courseId => student => isStudent
+    mapping(uint256 => mapping(address => bool)) public isStudent;
+
+    // courseId => student => index
+    mapping(uint256 => mapping(address => uint256)) public enrollmentIndice;
+
     uint256 public nCourses;
 
     ///////////////////////////////////////////////////////////////
@@ -70,14 +74,14 @@ contract CourseManager is Ownable {
     // Should check non-zero lecturer with `nonZeroAccount`
     // Should check valid course with `onlyValidCourse`
     modifier onlyLecturer(uint256 courseId, address lecturer) {
-        require(_courses[courseId].lecturer == lecturer, "NOT_LECTURER");
+        require(courses[courseId].lecturer == lecturer, "NOT_LECTURER");
         _;
     }
 
     // Should check non-zero student with `nonZeroAccount`
     // Should check valid course with `onlyValidCourse`
     modifier onlyValidStudent(uint256 courseId, address student) {
-        require(_courses[courseId].isStudent[student], "NOT_STUDENT");
+        require(isStudent[courseId][student], "NOT_STUDENT");
         _;
     }
 
@@ -92,7 +96,7 @@ contract CourseManager is Ownable {
     // Should check valid course with `onlyValidCourse`
     modifier onlyValidWeek(uint256 courseId, uint256 weekIndex) {
         require(
-            _courses[courseId].week.length > weekIndex,
+            courses[courseId].week.length > weekIndex,
             "OUT_OF_BOUND: WEEK_INDEX"
         );
         _;
@@ -102,8 +106,8 @@ contract CourseManager is Ownable {
     // Should check non-zero student with `nonZeroAccount`
     // Should check valid student with `onlyValidStudent`
     modifier updatePayment(uint256 courseId, address student) {
-        PaymentReceiver paymentReceiver = _courses[courseId]
-            .enrollments[_courses[courseId].enrollmentIndice[student]]
+        PaymentReceiver paymentReceiver = courses[courseId]
+            .enrollments[enrollmentIndice[courseId][student]]
             .paymentReceiver;
 
         if (address(paymentReceiver) != address(0)) {
@@ -131,7 +135,7 @@ contract CourseManager is Ownable {
         uint256 courseId = nCourses;
         nCourses = courseId + 1;
 
-        Course storage course = _courses[courseId];
+        Course storage course = courses[courseId];
         course.lecturer = msg.sender;
         course.enrollmentFee = enrollmentFee;
 
@@ -145,12 +149,12 @@ contract CourseManager is Ownable {
         uint256 courseId,
         bool isPrepay
     ) external onlyValidCourse(courseId) {
-        Course storage course = _courses[courseId];
+        Course storage course = courses[courseId];
 
-        require(!course.isStudent[msg.sender], "ALREADY_REGISTERED");
+        require(!isStudent[courseId][msg.sender], "ALREADY_REGISTERED");
 
-        course.isStudent[msg.sender] = true;
-        course.enrollmentIndice[msg.sender] = course.enrollments.length;
+        isStudent[courseId][msg.sender] = true;
+        enrollmentIndice[courseId][msg.sender] = course.enrollments.length;
 
         uint256 flowRate = isPrepay
             ? 0
@@ -190,7 +194,7 @@ contract CourseManager is Ownable {
             token.createFlowFrom(
                 msg.sender,
                 address(paymentReceiver),
-                1 // int96(uint96(flowRate))
+                int96(uint96(flowRate))
             );
         }
     }
@@ -207,17 +211,16 @@ contract CourseManager is Ownable {
         onlyValidStudent(courseId, msg.sender)
         onlyActiveStudent(courseId, msg.sender)
     {
-        Course storage course = _courses[courseId];
+        Course storage course = courses[courseId];
 
         require(isActive(courseId, msg.sender), "NOT_ACTIVE");
 
+        Enrollment storage enrollment = course.enrollments[
+            enrollmentIndice[courseId][msg.sender]
+        ];
+
         // check student passed previous course
-        require(
-            course
-                .enrollments[course.enrollmentIndice[msg.sender]]
-                .currentWeekIndex == weekIndex,
-            "INVALID_WEEK"
-        );
+        require(enrollment.currentWeekIndex == weekIndex, "INVALID_WEEK");
 
         // check student's answer
         require(
@@ -226,24 +229,54 @@ contract CourseManager is Ownable {
         );
 
         // go to the next week
-        course
-            .enrollments[course.enrollmentIndice[msg.sender]]
-            .currentWeekIndex++;
+        enrollment.currentWeekIndex++;
+
+        // update payment to check user to make sure that student pay up to the fee
+        if (address(enrollment.paymentReceiver) != address(0)) {
+            enrollment.paymentReceiver.updatePayment();
+        }
+
+        // mark finished if student submits all answers
+        if (enrollment.currentWeekIndex == course.week.length) {
+            enrollment.finished = true;
+
+            if (address(enrollment.paymentReceiver) != address(0)) {
+                // delete flow to stop paying more token
+                token.deleteFlowFrom(
+                    msg.sender,
+                    address(enrollment.paymentReceiver)
+                );
+
+                // mark finished to payment receiver to transfer token to lecturer
+                enrollment.paymentReceiver.forceFinish();
+            }
+        }
     }
 
     function isActive(
         uint256 courseId,
         address student
     ) public view returns (bool) {
-        Course storage course = _courses[courseId];
+        Course storage course = courses[courseId];
 
-        if (!course.isStudent[student]) return false;
-        if (course.enrollmentFee > 0)
+        // return false for non-student
+        if (!isStudent[courseId][student]) return false;
+
+        if (course.enrollmentFee > 0) {
+            Enrollment storage enrollment = course.enrollments[
+                enrollmentIndice[courseId][student]
+            ];
+
+            // return true for prepaid student
+            if (enrollment.prepaid) return true;
+
+            // delegate checks to payment receiver
             return
                 course
-                    .enrollments[course.enrollmentIndice[student]]
+                    .enrollments[enrollmentIndice[courseId][student]]
                     .paymentReceiver
                     .isActive();
+        }
 
         return true;
     }
@@ -285,22 +318,22 @@ contract CourseManager is Ownable {
     // View
     ///////////////////////////////////////////////////////////////
 
-    function getProfessor(
+    function getLecturer(
         uint256 courseId
     ) external view onlyValidCourse(courseId) returns (address) {
-        return _courses[courseId].lecturer;
+        return courses[courseId].lecturer;
     }
 
-    function getEnrollFee(
+    function getEnrollmentFee(
         uint256 courseId
     ) external view onlyValidCourse(courseId) returns (uint256) {
-        return _courses[courseId].enrollmentFee;
+        return courses[courseId].enrollmentFee;
     }
 
     function getEnrollments(
         uint256 courseId
     ) external view onlyValidCourse(courseId) returns (Enrollment[] memory) {
-        return _courses[courseId].enrollments;
+        return courses[courseId].enrollments;
     }
 
     function getEnrollmentOf(
@@ -314,16 +347,40 @@ contract CourseManager is Ownable {
         returns (Enrollment memory)
     {
         return
-            _courses[courseId].enrollments[
-                _courses[courseId].enrollmentIndice[student]
-            ];
+            courses[courseId].enrollments[enrollmentIndice[courseId][student]];
     }
 
-    function isStudent(
+    function getStreamedAmount(
         uint256 courseId,
         address student
-    ) external view onlyValidCourse(courseId) returns (bool) {
-        require(courseId < nCourses, "OUT_OF_BOUND: COURSE_ID");
-        return _courses[courseId].isStudent[student];
+    )
+        external
+        view
+        onlyValidCourse(courseId)
+        onlyValidStudent(courseId, student)
+        returns (bool isFreeCourse, bool prepaid, uint256 streamedAmount)
+    {
+        Course storage course = courses[courseId];
+
+        if (course.enrollmentFee == 0) {
+            isFreeCourse = true;
+            return (isFreeCourse, prepaid, streamedAmount);
+        }
+
+        Enrollment storage enrollment = course.enrollments[
+            enrollmentIndice[courseId][student]
+        ];
+
+        if (enrollment.prepaid) {
+            prepaid = true;
+            return (isFreeCourse, prepaid, streamedAmount);
+        }
+
+        PaymentReceiver paymentReceiver = PaymentReceiver(
+            enrollment.paymentReceiver
+        );
+
+        streamedAmount = paymentReceiver.getCurrentBalance();
+        return (isFreeCourse, prepaid, streamedAmount);
     }
 }

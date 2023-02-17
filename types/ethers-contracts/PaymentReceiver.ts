@@ -29,6 +29,7 @@ import type {
 export interface PaymentReceiverInterface extends utils.Interface {
   functions: {
     "enrollmentFee()": FunctionFragment;
+    "finished()": FunctionFragment;
     "lecturer()": FunctionFragment;
     "owner()": FunctionFragment;
     "renounceOwnership()": FunctionFragment;
@@ -36,14 +37,16 @@ export interface PaymentReceiverInterface extends utils.Interface {
     "token()": FunctionFragment;
     "transferOwnership(address)": FunctionFragment;
     "updatePayment()": FunctionFragment;
-    "returnRemainings()": FunctionFragment;
+    "refundResidual()": FunctionFragment;
     "getCurrentBalance()": FunctionFragment;
     "isActive()": FunctionFragment;
+    "forceFinish()": FunctionFragment;
   };
 
   getFunction(
     nameOrSignatureOrTopic:
       | "enrollmentFee"
+      | "finished"
       | "lecturer"
       | "owner"
       | "renounceOwnership"
@@ -51,15 +54,17 @@ export interface PaymentReceiverInterface extends utils.Interface {
       | "token"
       | "transferOwnership"
       | "updatePayment"
-      | "returnRemainings"
+      | "refundResidual"
       | "getCurrentBalance"
       | "isActive"
+      | "forceFinish"
   ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "enrollmentFee",
     values?: undefined
   ): string;
+  encodeFunctionData(functionFragment: "finished", values?: undefined): string;
   encodeFunctionData(functionFragment: "lecturer", values?: undefined): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
@@ -77,7 +82,7 @@ export interface PaymentReceiverInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "returnRemainings",
+    functionFragment: "refundResidual",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -85,11 +90,16 @@ export interface PaymentReceiverInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "isActive", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "forceFinish",
+    values?: undefined
+  ): string;
 
   decodeFunctionResult(
     functionFragment: "enrollmentFee",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "finished", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "lecturer", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
@@ -107,7 +117,7 @@ export interface PaymentReceiverInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "returnRemainings",
+    functionFragment: "refundResidual",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -115,6 +125,10 @@ export interface PaymentReceiverInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "isActive", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "forceFinish",
+    data: BytesLike
+  ): Result;
 
   events: {
     "OwnershipTransferred(address,address)": EventFragment;
@@ -164,6 +178,8 @@ export interface PaymentReceiver extends BaseContract {
   functions: {
     enrollmentFee(overrides?: CallOverrides): Promise<[BigNumber]>;
 
+    finished(overrides?: CallOverrides): Promise<[boolean]>;
+
     lecturer(overrides?: CallOverrides): Promise<[string]>;
 
     /**
@@ -197,16 +213,22 @@ export interface PaymentReceiver extends BaseContract {
     /**
      * return overflowed token to student
      */
-    returnRemainings(
+    refundResidual(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<ContractTransaction>;
 
     getCurrentBalance(overrides?: CallOverrides): Promise<[BigNumber]>;
 
     isActive(overrides?: CallOverrides): Promise<[boolean]>;
+
+    forceFinish(
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<ContractTransaction>;
   };
 
   enrollmentFee(overrides?: CallOverrides): Promise<BigNumber>;
+
+  finished(overrides?: CallOverrides): Promise<boolean>;
 
   lecturer(overrides?: CallOverrides): Promise<string>;
 
@@ -241,7 +263,7 @@ export interface PaymentReceiver extends BaseContract {
   /**
    * return overflowed token to student
    */
-  returnRemainings(
+  refundResidual(
     overrides?: Overrides & { from?: PromiseOrValue<string> }
   ): Promise<ContractTransaction>;
 
@@ -249,8 +271,14 @@ export interface PaymentReceiver extends BaseContract {
 
   isActive(overrides?: CallOverrides): Promise<boolean>;
 
+  forceFinish(
+    overrides?: Overrides & { from?: PromiseOrValue<string> }
+  ): Promise<ContractTransaction>;
+
   callStatic: {
     enrollmentFee(overrides?: CallOverrides): Promise<BigNumber>;
+
+    finished(overrides?: CallOverrides): Promise<boolean>;
 
     lecturer(overrides?: CallOverrides): Promise<string>;
 
@@ -281,11 +309,13 @@ export interface PaymentReceiver extends BaseContract {
     /**
      * return overflowed token to student
      */
-    returnRemainings(overrides?: CallOverrides): Promise<void>;
+    refundResidual(overrides?: CallOverrides): Promise<void>;
 
     getCurrentBalance(overrides?: CallOverrides): Promise<BigNumber>;
 
     isActive(overrides?: CallOverrides): Promise<boolean>;
+
+    forceFinish(overrides?: CallOverrides): Promise<void>;
   };
 
   filters: {
@@ -301,6 +331,8 @@ export interface PaymentReceiver extends BaseContract {
 
   estimateGas: {
     enrollmentFee(overrides?: CallOverrides): Promise<BigNumber>;
+
+    finished(overrides?: CallOverrides): Promise<BigNumber>;
 
     lecturer(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -335,17 +367,23 @@ export interface PaymentReceiver extends BaseContract {
     /**
      * return overflowed token to student
      */
-    returnRemainings(
+    refundResidual(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<BigNumber>;
 
     getCurrentBalance(overrides?: CallOverrides): Promise<BigNumber>;
 
     isActive(overrides?: CallOverrides): Promise<BigNumber>;
+
+    forceFinish(
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<BigNumber>;
   };
 
   populateTransaction: {
     enrollmentFee(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    finished(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     lecturer(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
@@ -380,12 +418,16 @@ export interface PaymentReceiver extends BaseContract {
     /**
      * return overflowed token to student
      */
-    returnRemainings(
+    refundResidual(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<PopulatedTransaction>;
 
     getCurrentBalance(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     isActive(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    forceFinish(
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<PopulatedTransaction>;
   };
 }

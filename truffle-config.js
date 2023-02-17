@@ -46,12 +46,13 @@ invariant(
 console.log("Forking %s testnet", forkNetwork);
 
 const CHAIN_IDS = {
-  polygon: 80001, // Polygon Testnet Mumbai
-  ARBITRUM: 421613, // Arbitrum Görli Rollup Testnet
+  polygon: 137, // Polygon Mainnet
+  polygon_mumbai: 80001, // Polygon Testnet Mumbai
+  optimism: 10, // Optimism
+  optimism_goerli: 420, // Optimism Goerli Testnet
 };
 
-const CHAIN_ID =
-  forkNetwork === "polygon" ? CHAIN_IDS.polygon : CHAIN_IDS.ARBITRUM;
+const CHAIN_ID = CHAIN_IDS[forkNetwork];
 
 module.exports = {
   /**
@@ -90,8 +91,8 @@ module.exports = {
           mnemonic,
           `https://polygon-mumbai.infura.io/v3/${infuraProjectId}`
         ),
-      network_id: CHAIN_IDS.polygon,
-      chain_id: CHAIN_IDS.polygon,
+      network_id: CHAIN_IDS.polygon_mumbai,
+      chain_id: CHAIN_IDS.polygon_mumbai,
     },
 
     optimism_goerli: {
@@ -100,8 +101,9 @@ module.exports = {
           mnemonic,
           `https://optimism-goerli.infura.io/v3/${infuraProjectId}`
         ),
-      network_id: CHAIN_IDS.ARBITRUM,
-      chain_id: CHAIN_IDS.ARBITRUM,
+      network_id: CHAIN_IDS.optimism_goerli,
+      chain_id: CHAIN_IDS.optimism_goerli,
+      gasPrice: 0.000001e9,
     },
   },
 

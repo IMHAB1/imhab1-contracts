@@ -32,10 +32,24 @@ contract Factory is Ownable {
         ibt = _deployIBT();
         ibtx = _deployIBTx();
         courseManager = _deployCourseManager();
+
+        ibt.approve(address(ibtx), 1e29);
+        ibtx.upgrade(1e29);
+    }
+
+    mapping(address => bool) _received;
+
+    /// @dev faucet IBTx to msg.sender
+    function mint() external {
+        require(!_received[msg.sender], "NOPE");
+        _received[msg.sender] = true;
+        ibtx.transfer(msg.sender, 100e18);
     }
 
     function _deployIBT() internal returns (IBT _ibt) {
         _ibt = new IBT();
+
+        _ibt.mint(address(this), 1e29);
 
         _ibt.grantRole(_ibt.DEFAULT_ADMIN_ROLE(), msg.sender);
         _ibt.grantRole(_ibt.MINTER_ROLE(), msg.sender);

@@ -17,6 +17,7 @@ export default async function (deployer: Truffle.Deployer, network: string) {
     : "";
   const data = json ? JSON.parse(json) : {};
   data[network] = {
+    Factory: factory.address,
     CourseManager: await factory.courseManager(),
     IBT: await factory.ibt(),
     IBTx: await factory.ibtx(),

@@ -24,6 +24,7 @@ contract CourseManager is Ownable {
         uint256 currentWeekIndex;
         uint256 flowRate;
         uint256 enrolledAt;
+        uint256 finishedAt;
         PaymentReceiver paymentReceiver;
         bool finished; // true if student submits all answer
         bool prepaid; // true if student pay the fee when enroll
@@ -174,6 +175,7 @@ contract CourseManager is Ownable {
                 currentWeekIndex: 0,
                 flowRate: flowRate,
                 enrolledAt: block.timestamp,
+                finishedAt: 0,
                 paymentReceiver: paymentReceiver,
                 finished: false,
                 prepaid: isPrepay
@@ -239,6 +241,7 @@ contract CourseManager is Ownable {
         // mark finished if student submits all answers
         if (enrollment.currentWeekIndex == course.week.length) {
             enrollment.finished = true;
+            enrollment.finishedAt = block.timestamp;
 
             if (address(enrollment.paymentReceiver) != address(0)) {
                 // delete flow to stop paying more token
@@ -358,13 +361,19 @@ contract CourseManager is Ownable {
         view
         onlyValidCourse(courseId)
         onlyValidStudent(courseId, student)
-        returns (bool isFreeCourse, bool prepaid, uint256 streamedAmount)
+        returns (
+            bool isFreeCourse,
+            bool prepaid,
+            bool paidAll,
+            uint256 streamedAmount
+        )
     {
         Course storage course = courses[courseId];
 
         if (course.enrollmentFee == 0) {
             isFreeCourse = true;
-            return (isFreeCourse, prepaid, streamedAmount);
+            paidAll = true;
+            return (isFreeCourse, prepaid, paidAll, streamedAmount);
         }
 
         Enrollment storage enrollment = course.enrollments[
@@ -373,7 +382,8 @@ contract CourseManager is Ownable {
 
         if (enrollment.prepaid) {
             prepaid = true;
-            return (isFreeCourse, prepaid, streamedAmount);
+            paidAll = true;
+            return (isFreeCourse, prepaid, paidAll, streamedAmount);
         }
 
         PaymentReceiver paymentReceiver = PaymentReceiver(
@@ -381,6 +391,10 @@ contract CourseManager is Ownable {
         );
 
         streamedAmount = paymentReceiver.getCurrentBalance();
-        return (isFreeCourse, prepaid, streamedAmount);
+        paidAll =
+            streamedAmount >= course.enrollmentFee ||
+            paymentReceiver.finished();
+
+        return (isFreeCourse, prepaid, paidAll, streamedAmount);
     }
 }

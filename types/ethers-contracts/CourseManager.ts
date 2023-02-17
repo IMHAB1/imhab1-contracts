@@ -43,6 +43,7 @@ export declare namespace CourseManager {
     currentWeekIndex: PromiseOrValue<BigNumberish>;
     flowRate: PromiseOrValue<BigNumberish>;
     enrolledAt: PromiseOrValue<BigNumberish>;
+    finishedAt: PromiseOrValue<BigNumberish>;
     paymentReceiver: PromiseOrValue<string>;
     finished: PromiseOrValue<boolean>;
     prepaid: PromiseOrValue<boolean>;
@@ -50,6 +51,7 @@ export declare namespace CourseManager {
 
   export type EnrollmentStructOutput = [
     string,
+    BigNumber,
     BigNumber,
     BigNumber,
     BigNumber,
@@ -61,6 +63,7 @@ export declare namespace CourseManager {
     currentWeekIndex: BigNumber;
     flowRate: BigNumber;
     enrolledAt: BigNumber;
+    finishedAt: BigNumber;
     paymentReceiver: string;
     finished: boolean;
     prepaid: boolean;
@@ -410,9 +413,10 @@ export interface CourseManager extends BaseContract {
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
     ): Promise<
-      [boolean, boolean, BigNumber] & {
+      [boolean, boolean, boolean, BigNumber] & {
         isFreeCourse: boolean;
         prepaid: boolean;
+        paidAll: boolean;
         streamedAmount: BigNumber;
       }
     >;
@@ -531,9 +535,10 @@ export interface CourseManager extends BaseContract {
     student: PromiseOrValue<string>,
     overrides?: CallOverrides
   ): Promise<
-    [boolean, boolean, BigNumber] & {
+    [boolean, boolean, boolean, BigNumber] & {
       isFreeCourse: boolean;
       prepaid: boolean;
+      paidAll: boolean;
       streamedAmount: BigNumber;
     }
   >;
@@ -650,9 +655,10 @@ export interface CourseManager extends BaseContract {
       student: PromiseOrValue<string>,
       overrides?: CallOverrides
     ): Promise<
-      [boolean, boolean, BigNumber] & {
+      [boolean, boolean, boolean, BigNumber] & {
         isFreeCourse: boolean;
         prepaid: boolean;
+        paidAll: boolean;
         streamedAmount: BigNumber;
       }
     >;

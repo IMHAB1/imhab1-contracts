@@ -214,6 +214,7 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       currentWeekIndex: BN;
       flowRate: BN;
       enrolledAt: BN;
+      finishedAt: BN;
       paymentReceiver: string;
       finished: boolean;
       prepaid: boolean;
@@ -229,6 +230,7 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     currentWeekIndex: BN;
     flowRate: BN;
     enrolledAt: BN;
+    finishedAt: BN;
     paymentReceiver: string;
     finished: boolean;
     prepaid: boolean;
@@ -238,7 +240,7 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
     courseId: number | BN | string,
     student: string,
     txDetails?: Truffle.TransactionDetails
-  ): Promise<{ 0: boolean; 1: boolean; 2: BN }>;
+  ): Promise<{ 0: boolean; 1: boolean; 2: boolean; 3: BN }>;
 
   methods: {
     PAYMENT_DURATION(txDetails?: Truffle.TransactionDetails): Promise<BN>;
@@ -429,6 +431,7 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
         currentWeekIndex: BN;
         flowRate: BN;
         enrolledAt: BN;
+        finishedAt: BN;
         paymentReceiver: string;
         finished: boolean;
         prepaid: boolean;
@@ -444,6 +447,7 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       currentWeekIndex: BN;
       flowRate: BN;
       enrolledAt: BN;
+      finishedAt: BN;
       paymentReceiver: string;
       finished: boolean;
       prepaid: boolean;
@@ -453,7 +457,7 @@ export interface CourseManagerInstance extends Truffle.ContractInstance {
       courseId: number | BN | string,
       student: string,
       txDetails?: Truffle.TransactionDetails
-    ): Promise<{ 0: boolean; 1: boolean; 2: BN }>;
+    ): Promise<{ 0: boolean; 1: boolean; 2: boolean; 3: BN }>;
   };
 
   getPastEvents(event: string): Promise<EventData[]>;

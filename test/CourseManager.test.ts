@@ -5,6 +5,7 @@ import { ConstantFlowAgreementV1 } from "@superfluid-finance/sdk-core";
 
 import {
   CourseManagerInstance,
+  FactoryInstance,
   IBTInstance,
   ISuperTokenInstance,
 } from "../types/truffle-contracts";
@@ -14,6 +15,8 @@ import * as times from "./utils/times";
 import { CHAIN_ID } from "../lib/config";
 import { formatUnits, parseUnits } from "ethers/lib/utils";
 import { LECTURE_DATA } from "../resources";
+import invariant from "invariant";
+import { last } from "lodash";
 
 const { expectRevert } = require("@openzeppelin/test-helpers");
 
@@ -29,7 +32,7 @@ const TINY_ERROR = toBN(parseUnits("0.001", 18).toString());
 const COURSE_ID = LECTURE_DATA.length;
 
 contract("CourseManager", (accounts: Truffle.Accounts) => {
-  const [deployer, lecturer, student0, student1] = accounts;
+  const [deployer, lecturer, student0, student1, student2] = accounts;
 
   const Factory = artifacts.require("Factory");
   const CourseManager = artifacts.require("CourseManager");
@@ -37,12 +40,13 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
   const ISuperToken = artifacts.require("ISuperToken");
   const PaymentReceiver = artifacts.require("PaymentReceiver");
 
+  let factory: FactoryInstance;
   let courseManager: CourseManagerInstance;
   let ibt: IBTInstance;
   let ibtx: ISuperTokenInstance;
 
   beforeEach("load contracts", async function () {
-    const factory = await Factory.deployed();
+    factory = await Factory.deployed();
 
     // // re-deploy contracts for test env
     // await factory.deployContracts();
@@ -61,6 +65,54 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
       await _snapshot.rollback();
     }
   });
+
+  //////////////////////////////////////////////////
+  // PERMISSION HELPERS
+  //////////////////////////////////////////////////
+  async function _setupPermission_superfluid(student: string) {
+    const sf = await Framework.create({
+      chainId: CHAIN_ID,
+      provider: ethersProvider,
+    });
+
+    const ibtxst = await sf.loadSuperToken(ibtx.address);
+
+    const op = ibtxst.authorizeFlowOperatorWithFullControl({
+      flowOperator: courseManager.address,
+    });
+
+    // check permission is not granted yet
+    const st0Data0 = await ibtxst.getFlowOperatorData({
+      sender: student,
+      flowOperator: courseManager.address,
+      providerOrSigner: ethersProvider,
+    });
+    expect(st0Data0.permissions).to.be.eq("0"); // NO PERMISSION
+
+    await op.exec(ethersProvider.getSigner(student));
+
+    // check permission is correctly granted
+    const st0Data1 = await ibtxst.getFlowOperatorData({
+      sender: student,
+      flowOperator: courseManager.address,
+      providerOrSigner: ethersProvider,
+    });
+    expect(st0Data1.permissions).to.be.eq("7"); // CREATE / UPDATE / DELETE PERMISSION
+  }
+
+  async function _setupPermission_prepaid(student: string) {
+    await ibtx.approve(
+      courseManager.address,
+      ethers.constants.MaxUint256.toString(),
+      { from: student }
+    );
+  }
+
+  async function _setupPermission() {
+    await _setupPermission_superfluid(student0);
+    await _setupPermission_prepaid(student1);
+    await _setupPermission_prepaid(student2);
+  }
 
   describe("IBTx", function () {
     beforeEach("mint IBT to deployer", async function () {
@@ -82,6 +134,332 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
   });
 
   describe("CourseManager", function () {
+    describe("For pre-registered courses", function () {
+      function shouldBehaveLikeFreeCourese(
+        course: (typeof LECTURE_DATA)[0],
+        courseId: number
+      ) {
+        invariant(course.free, "non-free");
+
+        it(`Course#${courseId + 1} - free`, async function () {
+          // student0 registers the course
+          await courseManager.enrollCourse(courseId, false, { from: student0 });
+
+          expect(await courseManager.isStudent(courseId, student0)).to.be.true;
+
+          // check enrollment
+          let e = await courseManager.getEnrollmentOf(courseId, student0);
+          expect(e.currentWeekIndex.toString()).to.be.eq("0");
+          expect(e.flowRate.toString()).to.be.eq("0");
+          expect(e.student).to.be.eq(student0);
+          expect(e.paymentReceiver).to.be.eq(ethers.constants.AddressZero);
+          expect(e.prepaid).to.be.false;
+          expect(e.finished).to.be.false;
+          expect(await courseManager.isActive(courseId, student0)).to.be.true;
+
+          // iterate weeks
+          let weekIndex = 0;
+          for (const week of course.weeks) {
+            expect(await courseManager.isActive(courseId, student0)).to.be.true;
+            e = await courseManager.getEnrollmentOf(courseId, student0);
+            expect(e.currentWeekIndex.toString()).to.be.eq(
+              weekIndex.toString()
+            );
+
+            const quiz = last(week.lectures)?.quiz!;
+            const answers = await quiz.map((q) => q.solution);
+            const answerBigEndian = await courseManager
+              .encodeAnswers(answers)
+              .then((res) => "0x" + res.toString());
+
+            await courseManager.submitAnswer(
+              courseId,
+              weekIndex,
+              answerBigEndian,
+              {
+                from: student0,
+              }
+            );
+
+            weekIndex++;
+          }
+
+          // check last
+          e = await courseManager.getEnrollmentOf(courseId, student0);
+          expect(e.currentWeekIndex.toString()).to.be.eq(weekIndex.toString());
+          expect(e.finished).to.be.true;
+        });
+      }
+
+      function shouldBehaveLikePaidCourese(
+        course: (typeof LECTURE_DATA)[0],
+        courseId: number
+      ) {
+        invariant(!course.free, "non-paid");
+
+        it(`Course#${courseId + 1} - paid`, async function () {
+          // transfer IBTx to students
+          await factory.mint({ from: student0 });
+          await factory.mint({ from: student1 });
+          await factory.mint({ from: student2 });
+
+          const lecturer = await courseManager.getLecturer(courseId);
+          const enrollmentFee = await courseManager.getEnrollmentFee(courseId);
+
+          const lecturerBalanceBefore = await ibtx.balanceOf(lecturer);
+          const student0BalanceBefore = await ibtx.balanceOf(student0);
+          const student1BalanceBefore = await ibtx.balanceOf(student1);
+          const student2BalanceBefore = await ibtx.balanceOf(student2);
+
+          // student0 registers the course with superfluid token
+          {
+            await _setupPermission_superfluid(student0);
+            await courseManager.enrollCourse(courseId, false, {
+              from: student0,
+            });
+          }
+
+          // student1 registers the course with prepaid payment
+          {
+            const lecturerBalanceBefore = await ibtx.balanceOf(lecturer);
+            const student1BalanceBefore = await ibtx.balanceOf(student1);
+            await _setupPermission_prepaid(student1);
+            await courseManager.enrollCourse(courseId, true, {
+              from: student1,
+            });
+            const lecturerBalanceAfter = await ibtx.balanceOf(lecturer);
+            const student1BalanceAfter = await ibtx.balanceOf(student1);
+
+            const lecturerBalanceDiff = toBN(
+              lecturerBalanceAfter.sub(lecturerBalanceBefore).toString()
+            );
+            const student1BalanceDiff = toBN(
+              student1BalanceAfter.sub(student1BalanceBefore).toString()
+            );
+
+            expect(lecturerBalanceDiff.toString()).to.be.eq(
+              enrollmentFee.toString()
+            );
+            expect(student1BalanceDiff.toString()).to.be.eq(
+              enrollmentFee.neg().toString()
+            );
+          }
+          // student2 registers the course with superfluid payment
+          {
+            await _setupPermission_superfluid(student2);
+            await courseManager.enrollCourse(courseId, false, {
+              from: student2,
+            });
+          }
+
+          expect(await courseManager.isStudent(courseId, student0)).to.be.true;
+          expect(await courseManager.isStudent(courseId, student1)).to.be.true;
+          expect(await courseManager.isStudent(courseId, student2)).to.be.true;
+
+          // check enrollment
+          let e0 = await courseManager.getEnrollmentOf(courseId, student0);
+          let e1 = await courseManager.getEnrollmentOf(courseId, student1);
+          let e2 = await courseManager.getEnrollmentOf(courseId, student2);
+
+          {
+            expect(e0.currentWeekIndex.toString()).to.be.eq("0");
+            expect(e0.flowRate.toString()).to.be.not.eq("0");
+            expect(e0.student).to.be.eq(student0);
+            expect(e0.paymentReceiver).to.be.not.eq(
+              ethers.constants.AddressZero
+            );
+            expect(e0.prepaid).to.be.false;
+            expect(e0.finished).to.be.false;
+            expect(await courseManager.isActive(courseId, student0)).to.be.true;
+          }
+
+          {
+            expect(e1.currentWeekIndex.toString()).to.be.eq("0");
+            expect(e1.flowRate.toString()).to.be.eq("0");
+            expect(e1.student).to.be.eq(student1);
+            expect(e1.paymentReceiver).to.be.eq(ethers.constants.AddressZero);
+            expect(e1.prepaid).to.be.true;
+            expect(e1.finished).to.be.false;
+            expect(await courseManager.isActive(courseId, student1)).to.be.true;
+          }
+
+          {
+            expect(e2.currentWeekIndex.toString()).to.be.eq("0");
+            expect(e2.flowRate.toString()).to.be.not.eq("0");
+            expect(e2.student).to.be.eq(student2);
+            expect(e2.paymentReceiver).to.be.not.eq(
+              ethers.constants.AddressZero
+            );
+            expect(e2.prepaid).to.be.false;
+            expect(e2.finished).to.be.false;
+            expect(await courseManager.isActive(courseId, student2)).to.be.true;
+          }
+
+          // iterate weeks: student0 and student1 submit every week
+          let weekIndex = 0;
+          for (const week of course.weeks) {
+            await times.increase(times.duration.weeks(1));
+            const { 3: streamdAmount0 } = await courseManager.getStreamedAmount(
+              courseId,
+              student0
+            );
+
+            const prepaidPayment0Percent = streamdAmount0
+              .mul(toBN(100))
+              .div(enrollmentFee);
+
+            const expectPrepaidPercent = toBN((weekIndex + 1) * 7)
+              .mul(toBN(100))
+              .div(toBN(90));
+
+            expect(prepaidPayment0Percent.toString()).to.be.eq(
+              expectPrepaidPercent.toString()
+            );
+
+            expect(await courseManager.isActive(courseId, student0)).to.be.true;
+            expect(await courseManager.isActive(courseId, student1)).to.be.true;
+
+            e0 = await courseManager.getEnrollmentOf(courseId, student0);
+            e1 = await courseManager.getEnrollmentOf(courseId, student1);
+
+            expect(e1.currentWeekIndex.toString()).to.be.eq(
+              weekIndex.toString()
+            );
+            expect(e0.currentWeekIndex.toString()).to.be.eq(
+              weekIndex.toString()
+            );
+
+            const quiz = last(week.lectures)?.quiz!;
+            const answers = await quiz.map((q) => q.solution);
+            const answerBigEndian = await courseManager
+              .encodeAnswers(answers)
+              .then((res) => "0x" + res.toString());
+
+            await courseManager.submitAnswer(
+              courseId,
+              weekIndex,
+              answerBigEndian,
+              {
+                from: student0,
+              }
+            );
+
+            await courseManager.submitAnswer(
+              courseId,
+              weekIndex,
+              answerBigEndian,
+              {
+                from: student1,
+              }
+            );
+
+            weekIndex++;
+          }
+
+          // student2 submits all answer after more than 1 year
+          await times.increase(times.duration.days(365));
+
+          weekIndex = 0;
+          for (const week of course.weeks) {
+            await times.increase(times.duration.weeks(1));
+            expect(await courseManager.isActive(courseId, student2)).to.be.true;
+
+            e2 = await courseManager.getEnrollmentOf(courseId, student2);
+
+            expect(e2.currentWeekIndex.toString()).to.be.eq(
+              weekIndex.toString()
+            );
+
+            const quiz = last(week.lectures)?.quiz!;
+            const answers = await quiz.map((q) => q.solution);
+            const answerBigEndian = await courseManager
+              .encodeAnswers(answers)
+              .then((res) => "0x" + res.toString());
+
+            await courseManager.submitAnswer(
+              courseId,
+              weekIndex,
+              answerBigEndian,
+              {
+                from: student2,
+              }
+            );
+
+            const { 2: paidAll } = await courseManager.getStreamedAmount(
+              courseId,
+              student2
+            );
+
+            expect(paidAll).to.be.true;
+
+            weekIndex++;
+          }
+
+          // check last
+          e0 = await courseManager.getEnrollmentOf(courseId, student0);
+          e1 = await courseManager.getEnrollmentOf(courseId, student1);
+          e2 = await courseManager.getEnrollmentOf(courseId, student2);
+
+          expect(e0.currentWeekIndex.toString()).to.be.eq(weekIndex.toString());
+          expect(e0.finished).to.be.true;
+          expect(e1.currentWeekIndex.toString()).to.be.eq(weekIndex.toString());
+          expect(e1.finished).to.be.true;
+          expect(e2.currentWeekIndex.toString()).to.be.eq(weekIndex.toString());
+          expect(e2.finished).to.be.true;
+
+          // check payment
+          const lecturerBalanceAfter = await ibtx.balanceOf(lecturer);
+          const student0BalanceAfter = await ibtx.balanceOf(student0);
+          const student1BalanceAfter = await ibtx.balanceOf(student1);
+          const student2BalanceAfter = await ibtx.balanceOf(student2);
+
+          const lecturerBalanceDiff = lecturerBalanceAfter.sub(
+            lecturerBalanceBefore
+          );
+          const student0BalanceDiff = student0BalanceAfter.sub(
+            student0BalanceBefore
+          );
+          const student1BalanceDiff = student1BalanceAfter.sub(
+            student1BalanceBefore
+          );
+          const student2BalanceDiff = student2BalanceAfter.sub(
+            student2BalanceBefore
+          );
+
+          // lecturer receives sum of fees from students
+          expect(lecturerBalanceDiff.toString()).to.be.eq(
+            student0BalanceDiff
+              .add(student1BalanceDiff)
+              .add(student2BalanceDiff)
+              .neg()
+              .toString()
+          );
+
+          // student0 should pay partial fee
+          expect(student0BalanceDiff.toString()).to.be.eq(
+            toBN(e0.finishedAt.toString())
+              .sub(toBN(e0.enrolledAt.toString()))
+              .mul(toBN(e0.flowRate.toString()))
+              .neg()
+              .toString()
+          );
+          // student1 should pay all fee
+          expect(student1BalanceDiff.toString()).to.be.eq(
+            enrollmentFee.neg().toString()
+          );
+          // student1 should pay all fee
+          expect(student2BalanceDiff.toString()).to.be.eq(
+            enrollmentFee.neg().toString()
+          );
+        });
+      }
+
+      LECTURE_DATA.forEach((lecture, index) => {
+        if (lecture.free) shouldBehaveLikeFreeCourese(lecture, index);
+        else shouldBehaveLikePaidCourese(lecture, index);
+      });
+    });
+
     describe("For a 2-weeks free course", function () {
       let courseData: {
         enrollmentFee: number | BN | string;
@@ -365,12 +743,14 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
           const {
             0: isFreeCourse0,
             1: prepaid0,
-            2: streamedAmount0,
+            2: paidAll0,
+            3: streamedAmount0,
           } = await courseManager.getStreamedAmount(COURSE_ID, student0);
           const {
             0: isFreeCourse1,
             1: prepaid1,
-            2: streamedAmount1,
+            2: paidAll1,
+            3: streamedAmount1,
           } = await courseManager.getStreamedAmount(COURSE_ID, student1);
 
           expect(isFreeCourse0).to.be.false;
@@ -379,6 +759,8 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
           // check prepaid
           expect(prepaid0).to.be.false;
           expect(prepaid1).to.be.true;
+          expect(paidAll0).to.be.false;
+          expect(paidAll1).to.be.true;
 
           // check streamd amount
           expect(streamedAmount0.gt(toBN(0))).to.be.true; // pay some wei
@@ -498,8 +880,10 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
               )
                 .mul(toBN(45))
                 .div(toBN(90));
-              const { 2: actualStreamedAmount0 } =
+              const { 2: paidAll0, 3: actualStreamedAmount0 } =
                 await courseManager.getStreamedAmount(COURSE_ID, student0);
+
+              expect(paidAll0).to.be.false;
 
               // NOTE: tiny math error (≤1e5) may occur so we just calc diff
               const diff = expectedStreamedAmount0
@@ -537,6 +921,13 @@ contract("CourseManager", (accounts: Truffle.Accounts) => {
                 courseData.week[1].answerBigEndian,
                 { from: student0 }
               );
+
+              const { 2: paidAll } = await courseManager.getStreamedAmount(
+                COURSE_ID,
+                student0
+              );
+
+              expect(paidAll).to.be.true;
 
               const afterLecturerBalance = await ibtx.balanceOf(lecturer);
 

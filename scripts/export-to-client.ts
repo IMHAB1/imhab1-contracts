@@ -8,11 +8,12 @@ import invariant from "invariant";
 
 const ROOT_DIR_CONTRACTS = path.join(__dirname, "../");
 const ROOT_DIR_CLIENT = path.join(ROOT_DIR_CONTRACTS, "../imhab1-client");
+const SRC_RESOURCES_DIR_CLIENT = path.join(ROOT_DIR_CLIENT, "src/resources");
 
 invariant(
-  fs.existsSync(ROOT_DIR_CLIENT),
+  fs.existsSync(SRC_RESOURCES_DIR_CLIENT),
   "imhab1-client directory doesn't exist: %s",
-  ROOT_DIR_CLIENT
+  SRC_RESOURCES_DIR_CLIENT
 );
 
 const TRUFFLE_BUILD_DIR = path.join(ROOT_DIR_CONTRACTS, "build/contracts");
@@ -35,7 +36,7 @@ TRUFFLE_ARTIFACT_FILES.forEach((file) => {
 // copy abi
 for (const file of TRUFFLE_ARTIFACT_FILES) {
   const fileName = basename(file);
-  const destName = path.join(ROOT_DIR_CLIENT, "abi", fileName);
+  const destName = path.join(SRC_RESOURCES_DIR_CLIENT, "abi", fileName);
   fs.mkdirSync(path.dirname(destName), { recursive: true });
 
   // read json
@@ -53,7 +54,10 @@ const DEPLOYMENT_FILE_CONTRACTS = path.join(
   ROOT_DIR_CONTRACTS,
   "deployment.json"
 );
-const DEPLOYMENT_FILE_CLIENT = path.join(ROOT_DIR_CLIENT, "deployment.json");
+const DEPLOYMENT_FILE_CLIENT = path.join(
+  SRC_RESOURCES_DIR_CLIENT,
+  "deployment.json"
+);
 
 const deployment = require(DEPLOYMENT_FILE_CONTRACTS);
 fs.writeFileSync(DEPLOYMENT_FILE_CLIENT, JSON.stringify(deployment, null, 2), {

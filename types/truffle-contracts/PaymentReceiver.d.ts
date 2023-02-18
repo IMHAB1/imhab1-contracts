@@ -102,6 +102,10 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
 
   isActive(txDetails?: Truffle.TransactionDetails): Promise<boolean>;
 
+  getFlowInfo(
+    txDetails?: Truffle.TransactionDetails
+  ): Promise<{ 0: BN; 1: BN; 2: BN; 3: BN }>;
+
   forceFinish: {
     (txDetails?: Truffle.TransactionDetails): Promise<
       Truffle.TransactionResponse<AllEvents>
@@ -184,6 +188,10 @@ export interface PaymentReceiverInstance extends Truffle.ContractInstance {
     getCurrentBalance(txDetails?: Truffle.TransactionDetails): Promise<BN>;
 
     isActive(txDetails?: Truffle.TransactionDetails): Promise<boolean>;
+
+    getFlowInfo(
+      txDetails?: Truffle.TransactionDetails
+    ): Promise<{ 0: BN; 1: BN; 2: BN; 3: BN }>;
 
     forceFinish: {
       (txDetails?: Truffle.TransactionDetails): Promise<

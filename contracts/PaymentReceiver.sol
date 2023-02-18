@@ -73,11 +73,10 @@ contract PaymentReceiver is Ownable {
             uint256 timestamp
         ) = token.realtimeBalanceOfNow(address(this));
 
-        deposit;
         owedDeposit;
         timestamp;
 
-        return availableBalance > 0 ? uint256(availableBalance) : 0;
+        return uint256(availableBalance) + deposit;
     }
 
     function isActive() public view returns (bool) {
@@ -99,6 +98,24 @@ contract PaymentReceiver is Ownable {
         owedDeposit;
 
         return deposit > 0;
+    }
+
+    function getFlowInfo()
+        public
+        view
+        returns (
+            uint256 lastUpdated,
+            int96 flowRate,
+            uint256 deposit,
+            uint256 owedDeposit
+        )
+    {
+        (lastUpdated, flowRate, deposit, owedDeposit) = token.getFlowInfo(
+            student,
+            address(this)
+        );
+
+        return (lastUpdated, flowRate, deposit, owedDeposit);
     }
 
     function forceFinish() external onlyOwner {

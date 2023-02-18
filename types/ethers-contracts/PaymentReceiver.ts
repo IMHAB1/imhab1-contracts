@@ -40,6 +40,7 @@ export interface PaymentReceiverInterface extends utils.Interface {
     "refundResidual()": FunctionFragment;
     "getCurrentBalance()": FunctionFragment;
     "isActive()": FunctionFragment;
+    "getFlowInfo()": FunctionFragment;
     "forceFinish()": FunctionFragment;
   };
 
@@ -57,6 +58,7 @@ export interface PaymentReceiverInterface extends utils.Interface {
       | "refundResidual"
       | "getCurrentBalance"
       | "isActive"
+      | "getFlowInfo"
       | "forceFinish"
   ): FunctionFragment;
 
@@ -90,6 +92,10 @@ export interface PaymentReceiverInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "isActive", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "getFlowInfo",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "forceFinish",
     values?: undefined
@@ -125,6 +131,10 @@ export interface PaymentReceiverInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "isActive", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getFlowInfo",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "forceFinish",
     data: BytesLike
@@ -221,6 +231,17 @@ export interface PaymentReceiver extends BaseContract {
 
     isActive(overrides?: CallOverrides): Promise<[boolean]>;
 
+    getFlowInfo(
+      overrides?: CallOverrides
+    ): Promise<
+      [BigNumber, BigNumber, BigNumber, BigNumber] & {
+        lastUpdated: BigNumber;
+        flowRate: BigNumber;
+        deposit: BigNumber;
+        owedDeposit: BigNumber;
+      }
+    >;
+
     forceFinish(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<ContractTransaction>;
@@ -271,6 +292,17 @@ export interface PaymentReceiver extends BaseContract {
 
   isActive(overrides?: CallOverrides): Promise<boolean>;
 
+  getFlowInfo(
+    overrides?: CallOverrides
+  ): Promise<
+    [BigNumber, BigNumber, BigNumber, BigNumber] & {
+      lastUpdated: BigNumber;
+      flowRate: BigNumber;
+      deposit: BigNumber;
+      owedDeposit: BigNumber;
+    }
+  >;
+
   forceFinish(
     overrides?: Overrides & { from?: PromiseOrValue<string> }
   ): Promise<ContractTransaction>;
@@ -314,6 +346,17 @@ export interface PaymentReceiver extends BaseContract {
     getCurrentBalance(overrides?: CallOverrides): Promise<BigNumber>;
 
     isActive(overrides?: CallOverrides): Promise<boolean>;
+
+    getFlowInfo(
+      overrides?: CallOverrides
+    ): Promise<
+      [BigNumber, BigNumber, BigNumber, BigNumber] & {
+        lastUpdated: BigNumber;
+        flowRate: BigNumber;
+        deposit: BigNumber;
+        owedDeposit: BigNumber;
+      }
+    >;
 
     forceFinish(overrides?: CallOverrides): Promise<void>;
   };
@@ -375,6 +418,8 @@ export interface PaymentReceiver extends BaseContract {
 
     isActive(overrides?: CallOverrides): Promise<BigNumber>;
 
+    getFlowInfo(overrides?: CallOverrides): Promise<BigNumber>;
+
     forceFinish(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<BigNumber>;
@@ -425,6 +470,8 @@ export interface PaymentReceiver extends BaseContract {
     getCurrentBalance(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     isActive(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    getFlowInfo(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     forceFinish(
       overrides?: Overrides & { from?: PromiseOrValue<string> }
